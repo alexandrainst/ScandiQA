@@ -169,8 +169,8 @@ class ScandiQADataset:
 
 
 if __name__ == "__main__":
-    cache_dir = ".cache/huggingface"  # "/mnt/data_4tb/dan/.cache/huggingface"
+    # cache_dir = "/mnt/data_4tb/dan/.cache/huggingface"
     for language in ["da", "sv", "no"]:
-        dataset = ScandiQADataset(language=language, cache_dir=cache_dir)
+        dataset = ScandiQADataset(language=language)
         dataset.add_english_contexts()
         dataset.push_to_hub()
