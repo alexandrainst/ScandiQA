@@ -1,9 +1,9 @@
-# scandi_qa
+# ScandiQA
 
 Scandinavian question-answering models and datasets.
 
 
-## Setup
+## Setup
 
 ### Set up the environment
 1. If you do not have [Poetry](https://python-poetry.org/docs/#installation) then
