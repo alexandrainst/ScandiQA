@@ -1,6 +1,6 @@
 .PHONY: notebook docs
 .EXPORT_ALL_VARIABLES:
-export ENV_DIR = $( poetry env list --full-path | grep Activated | cut -d' ' -f1 )"
+export ENV_DIR="$( poetry env list --full-path | grep Activated | cut -d' ' -f1 )"
 
 activate:
 	@echo "Activating virtual environment"
