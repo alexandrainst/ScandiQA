@@ -16,6 +16,8 @@ class ScandiQADataset:
         language (str, optional):
             The language of the dataset. Needs to be a language present in MKQA.
             Defaults to 'da'.
+        cache_dir (str, optional):
+            The directory to cache the dataset. Defaults to '~/.cache/huggingface'.
 
     Attributes:
         language (str):
@@ -26,10 +28,13 @@ class ScandiQADataset:
             The Google Natural Questions dataset.
     """
 
-    def __init__(self, language: str = "da"):
+    def __init__(self, language: str = "da", cache_dir: str = "~/.cache/huggingface"):
         self.language = language
+        self.cache_dir = cache_dir
         self.mkqa = self.build_mkqa()
-        self.nq = load_dataset("natural_questions", split="train")
+        self.nq = load_dataset(
+            "natural_questions", split="train", cache_dir=self.cache_dir
+        )
 
     def add_english_contexts(self):
         """Adds English contexts to the MKQA dataset.
@@ -140,7 +145,7 @@ class ScandiQADataset:
                 The MKQA dataset for the given language.
         """
         # Load the raw MKQA dataset
-        mkqa = load_dataset("mkqa", split="train").to_pandas()
+        mkqa = load_dataset("mkqa", split="train", cache_dir=self.cache_dir).to_pandas()
 
         # Get the language-specific queries and answers
         mkqa["question"] = mkqa.queries.map(lambda dct: dct[self.language])
@@ -164,7 +169,8 @@ class ScandiQADataset:
 
 
 if __name__ == "__main__":
+    cache_dir = "/mnt/data_4tb/.cache/huggingface"
     for language in ["da", "sv", "no"]:
-        dataset = ScandiQADataset(language="da")
+        dataset = ScandiQADataset(language=language, cache_dir=cache_dir)
         dataset.add_english_contexts()
         dataset.push_to_hub()
