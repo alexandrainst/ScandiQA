@@ -208,26 +208,21 @@ class ScandiQADataset:
             # Extract all the paragraphs from the HTML context. These are all the <p>
             # tags in the HTML context which contain more than 10 characters
             soup = BeautifulSoup(html_bytes, "html.parser")
-            paragraphs = list(
-                {
-                    p.get_text().strip("\n")
-                    for tag in [soup] + soup.find_all("div")
-                    for p in tag.find_all("p")
-                    if len(p.get_text().strip("\n")) > 10
-                }
-            )
+            context_candidates = [
+                tag.get_text().strip("\n")
+                for tag_name in ["p", "span", "table"]
+                for tag in soup.find_all(tag_name)
+                if len(tag.get_text()) > 10
+            ]
 
             # Embed all the paragraphs
-            paragraphs_emb = [self.sbert.encode(p) for p in paragraphs]
+            candidate_embs = [self.sbert.encode(ctx) for ctx in context_candidates]
 
             # Compute the similarity between the question and all the paragraphs
-            similarities = [self.similarity(question_emb, p) for p in paragraphs_emb]
+            similarities = [self.similarity(question_emb, p) for p in candidate_embs]
 
             # Get the paragraph with the largest similarity
-            context_en = paragraphs[similarities.index(max(similarities))]
-
-            if len(context_en) == 0:
-                breakpoint()
+            context_en = context_candidates[similarities.index(max(similarities))]
 
             # Clean the context
             context_en = self.clean_context(context_en)
@@ -247,23 +242,15 @@ class ScandiQADataset:
             # Extract all the paragraphs from the HTML context. These are all the <p>
             # tags in the HTML context
             soup = BeautifulSoup(html_bytes, "html.parser")
-            try:
-                context_en = list(
-                    {
-                        p.get_text().strip("\n")
-                        for tag in [soup] + soup.find_all("div")
-                        for p in tag.find_all("p")
-                        if answer in p.get_text().strip("\n")
-                    }
-                )[0]
-            except IndexError:
-                breakpoint()
-
-            if len(context_en) == 0:
-                breakpoint()
+            context_candidates = [
+                tag.get_text().strip("\n")
+                for tag_name in ["p", "span", "table"]
+                for tag in soup.find_all(tag_name)
+                if answer in tag.get_text().strip("\n")
+            ]
 
             # Clean the context
-            context_en = self.clean_context(context_en)
+            context_en = self.clean_context(context_candidates[0])
 
             # Set the answer start to the index of the answer in the context
             answer_start = context_en.index(answer)
