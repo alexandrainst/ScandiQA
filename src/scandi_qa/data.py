@@ -249,6 +249,9 @@ class ScandiQADataset:
                 if answer in tag.get_text().strip("\n")
             ]
 
+            if len(context_candidates) == 0:
+                breakpoint()
+
             # Clean the context
             context_en = self.clean_context(context_candidates[0])
 
