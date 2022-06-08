@@ -54,8 +54,12 @@ class ScandiQADataset:
             # Get the example ID
             example_id = int(example["id"])
 
+            # Check if the example is a yes/no answer, as we do not want to include
+            # those
+            yes_no_answer = example["annotations"]["yes_no_answer"][0] == 1
+
             # Check if the example ID is in the MKQA dataset
-            if example_id in self.mkqa.index:
+            if example_id in self.mkqa.index and not yes_no_answer:
 
                 # Process the example
                 example = self._process_nq_example(example)
