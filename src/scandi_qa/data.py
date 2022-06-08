@@ -154,7 +154,10 @@ class ScandiQADataset:
         cleaned_context = cleaned_context.strip().strip("\n")
 
         # Check that the cleaned context is not empty
-        assert len(cleaned_context) > 0
+        try:
+            assert len(cleaned_context) > 0
+        except AssertionError:
+            breakpoint()
 
         # Return the cleaned context
         return cleaned_context
