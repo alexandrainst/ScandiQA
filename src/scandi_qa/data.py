@@ -154,10 +154,7 @@ class ScandiQADataset:
         cleaned_context = cleaned_context.strip().strip("\n")
 
         # Check that the cleaned context is not empty
-        try:
-            assert len(cleaned_context) > 0
-        except AssertionError:
-            breakpoint()
+        assert len(cleaned_context) > 0
 
         # Return the cleaned context
         return cleaned_context
@@ -216,7 +213,7 @@ class ScandiQADataset:
                     p.get_text().strip("\n")
                     for tag in [soup] + soup.find_all("div")
                     for p in tag.find_all("p")
-                    if len(p.get_text()) > 10
+                    if len(p.get_text().strip("\n")) > 10
                 }
             )
 
@@ -228,6 +225,9 @@ class ScandiQADataset:
 
             # Get the paragraph with the largest similarity
             context_en = paragraphs[similarities.index(max(similarities))]
+
+            if len(context_en) == 0:
+                breakpoint()
 
             # Clean the context
             context_en = self.clean_context(context_en)
