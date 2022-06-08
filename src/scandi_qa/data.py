@@ -255,6 +255,9 @@ class ScandiQADataset:
                 }
             )[0]
 
+            if len(context_en) == 0:
+                breakpoint()
+
             # Clean the context
             context_en = self.clean_context(context_en)
 
@@ -269,6 +272,9 @@ class ScandiQADataset:
 
             # Parse the HTML to get the long answer as plain text
             context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
+
+            if len(context_en) == 0:
+                breakpoint()
 
             # Clean the context
             context_en = self.clean_context(context_en)
