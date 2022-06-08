@@ -86,6 +86,9 @@ class ScandiQADataset:
             subset=["title_en", "context_en", "answer_start_en"], inplace=True
         )
 
+        # Cast the `answer_start_en` column as integer
+        self.mkqa.answer_start_en = self.mkqa.answer_start_en.astype(int)
+
         return self
 
     @staticmethod
