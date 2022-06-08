@@ -208,11 +208,14 @@ class ScandiQADataset:
             # Extract all the paragraphs from the HTML context. These are all the <p>
             # tags in the HTML context which contain more than 10 characters
             soup = BeautifulSoup(html_bytes, "html.parser")
-            paragraphs = [
-                p.get_text().strip("\n")
-                for p in soup.find_all("p")
-                if len(p.get_text()) > 10
-            ]
+            paragraphs = list(
+                {
+                    p.get_text().strip("\n")
+                    for tag in [soup] + soup.find_all("div")
+                    for p in tag.find_all("p")
+                    if len(p.get_text()) > 10
+                }
+            )
 
             # Embed all the paragraphs
             paragraphs_emb = [self.sbert.encode(p) for p in paragraphs]
@@ -241,14 +244,13 @@ class ScandiQADataset:
             # Extract all the paragraphs from the HTML context. These are all the <p>
             # tags in the HTML context
             soup = BeautifulSoup(html_bytes, "html.parser")
-            try:
-                context_en = [
+            context_en = list(
+                {
                     p.get_text().strip("\n")
-                    for p in soup.find_all("p")
-                    if answer in p.get_text()
-                ][0]
-            except IndexError:
-                breakpoint()
+                    for tag in [soup] + soup.find_all("div")
+                    for p in tag.find_all("p")
+                }
+            )[0]
 
             # Clean the context
             context_en = self.clean_context(context_en)
