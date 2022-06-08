@@ -288,15 +288,6 @@ class ScandiQADataset:
             # we extract the answer start index
             else:
 
-                # Get the answer text, and the byte indices of the answer
-                answer = answer_dict["text"][0]
-                answer_start = answer_dict["start_byte"][0]
-                answer_end = answer_dict["end_byte"][0]
-
-                # Double-check that the start and stop byte indices of the answer is
-                # indeed the answer
-                assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
-
                 # Check how many times the answer appears in the context
                 answer_count = context_en.count(answer)
 
@@ -309,22 +300,38 @@ class ScandiQADataset:
                 # the HTML context, and find the corresponding start index in the
                 # parsed context
                 else:
-                    # Find all start indices of the answer in the HTML context
-                    answer_html_idxs = [
-                        s.start() for s in re.finditer(answer, html_bytes)
-                    ]
+                    # Get the Natural Questions answer start byte index
+                    nq_answer_start = answer_dict["start_byte"][0]
 
-                    # Find the occurence of the desired answer in the HTML context
-                    answer_occurence = answer_html_idxs.index(answer_start)
+                    # If the Natural Questions answer start byte index does indeed
+                    # correspond to the MKQA answer then use this to extract the
+                    # corresponding start index from the parsed HTML
+                    if (
+                        html_bytes[nq_answer_start : nq_answer_start + len(answer)]
+                        == answer
+                    ):
 
-                    # Find all start indices of the answer in the parsed context
-                    answer_parsed_idxs = [
-                        s.start() for s in re.finditer(answer, context_en)
-                    ]
+                        # Find all start indices of the answer in the HTML context
+                        answer_html_idxs = [
+                            s.start() for s in re.finditer(answer, html_bytes)
+                        ]
 
-                    # Extract the start index of the desired answer in the parsed
-                    # context
-                    answer_start = answer_parsed_idxs[answer_occurence]
+                        # Find the occurence of the desired answer in the HTML context
+                        answer_occurence = answer_html_idxs.index(nq_answer_start)
+
+                        # Find all start indices of the answer in the parsed context
+                        answer_parsed_idxs = [
+                            s.start() for s in re.finditer(answer, context_en)
+                        ]
+
+                        # Extract the start index of the desired answer in the parsed
+                        # context
+                        answer_start = answer_parsed_idxs[answer_occurence]
+
+                    # Otherwise, we set the answer start to the first occurence of the
+                    # MKQA answer
+                    else:
+                        answer_start = context_en.index(answer)
 
         # Add the example ID, title, context and answer start index to the example
         example["example_id"] = example_id
