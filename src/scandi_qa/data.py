@@ -252,6 +252,7 @@ class ScandiQADataset:
                     p.get_text().strip("\n")
                     for tag in [soup] + soup.find_all("div")
                     for p in tag.find_all("p")
+                    if answer in p.get_text().strip("\n")
                 }
             )[0]
 
