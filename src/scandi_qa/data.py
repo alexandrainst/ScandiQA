@@ -158,6 +158,15 @@ class ScandiQADataset:
             # Get the paragraph with the largest similarity
             context_en = paragraphs[similarities.index(max(similarities))]
 
+            # Remove the Wikipedia reference tags from the context
+            context_en = re.sub(r"\[([0-9]+|citation needed)\]", "", context_en)
+
+            # Strip context of trailing whitespace and newlines
+            context_en = context_en.strip().strip("\n")
+
+            # Double-check that the context is not empty
+            assert len(context_en) > 0
+
             # Set the answer start to -1
             answer_start = -1
 
@@ -168,48 +177,64 @@ class ScandiQADataset:
             long_answer_html = html_bytes[long_answer_start:long_answer_end]
 
             # Parse the HTML to get the long answer as plain text
-            long_answer = BeautifulSoup(long_answer_html, "html.parser").get_text()
+            context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
-            # Remove the Wikipedia reference tags from the long answer
-            context_en = re.sub(r"\[[0-9]+\]", "", long_answer).strip()
+            # Remove the Wikipedia reference tags from the context
+            context_en = re.sub(r"\[([0-9]+|citation needed)\]", "", context_en)
 
-            # Get the answer along with the byte indices
+            # Strip context of trailing whitespace and newlines
+            context_en = context_en.strip().strip("\n")
+
+            # Double-check that the context is not empty
+            assert len(context_en) > 0
+
+            # Get the answer dictionary
             answer_dict = example["annotations"]["short_answers"][0]
-            answer = answer_dict["text"]
-            answer_start = answer_dict["start_byte"]
-            answer_end = answer_dict["end_byte"]
 
-            # Double-check that the start and stop byte indices of the answer is indeed
-            # the answer
-            assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
+            # If there is no answer then set the answer start to -1
+            if len(answer_dict["text"]) == 0:
+                answer_start = -1
 
-            # Check how many times the answer appears in the context
-            answer_count = context_en.count(answer)
-
-            # If the answer appears only once, then we identify the start index by simply
-            # using the `index` method
-            if answer_count == 1:
-                answer_start = context_en.index(answer)
-
-            # Otherwise, we need to find what occurence our desired answer is in the
-            # HTML context, and find the corresponding start index in the parsed context
+            # Otherwise, if there is an answer then extract the answer start index
             else:
-                # Find all start indices of the answer in the HTML context
-                answer_html_idxs = [s.start() for s in re.finditer(answer, html_bytes)]
 
-                # Find the occurence of the desired answer in the HTML context
-                answer_occurence = answer_html_idxs.index(answer_start)
+                # Get the answer text, and the byte indices of the answer
+                answer = answer_dict["text"][0]
+                answer_start = answer_dict["start_byte"][0]
+                answer_end = answer_dict["end_byte"][0]
 
-                # Find all start indices of the answer in the parsed context
-                answer_parsed_idxs = [
-                    s.start() for s in re.finditer(answer, long_answer)
-                ]
+                # Double-check that the start and stop byte indices of the answer is
+                # indeed the answer
+                assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
 
-                # Extract the start index of the desired answer in the parsed context
-                answer_start = answer_parsed_idxs[answer_occurence]
+                # Check how many times the answer appears in the context
+                answer_count = context_en.count(answer)
 
-        # Double-check that the context is not empty
-        assert len(context_en) > 0
+                # If the answer appears only once, then we identify the start index by
+                # simply using the `index` method
+                if answer_count == 1:
+                    answer_start = context_en.index(answer)
+
+                # Otherwise, we need to find what occurence our desired answer is in
+                # the HTML context, and find the corresponding start index in the
+                # parsed context
+                else:
+                    # Find all start indices of the answer in the HTML context
+                    answer_html_idxs = [
+                        s.start() for s in re.finditer(answer, html_bytes)
+                    ]
+
+                    # Find the occurence of the desired answer in the HTML context
+                    answer_occurence = answer_html_idxs.index(answer_start)
+
+                    # Find all start indices of the answer in the parsed context
+                    answer_parsed_idxs = [
+                        s.start() for s in re.finditer(answer, context_en)
+                    ]
+
+                    # Extract the start index of the desired answer in the parsed
+                    # context
+                    answer_start = answer_parsed_idxs[answer_occurence]
 
         # Add the context to the example
         example["context_en"] = context_en
