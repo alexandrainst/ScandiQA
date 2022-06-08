@@ -215,6 +215,12 @@ class ScandiQADataset:
                 if len(tag.get_text()) > 10
             ]
 
+            # If no candidate contexts were found then we set the context to None,
+            # which will mean that this example will be excluded from the dataset
+            if len(context_candidates) == 0:
+                context_en = None
+                answer_start = None
+
             # Embed all the paragraphs
             candidate_embs = [self.sbert.encode(ctx) for ctx in context_candidates]
 
@@ -249,14 +255,20 @@ class ScandiQADataset:
                 if answer in tag.get_text().strip("\n")
             ]
 
+            # If no candidate contexts were found then we set the context to None,
+            # which will mean that this example will be excluded from the dataset
             if len(context_candidates) == 0:
-                breakpoint()
+                context_en = None
+                answer_start = None
 
-            # Clean the context
-            context_en = self.clean_context(context_candidates[0])
+            # Otherwise, we set the answer start to the index of the first paragraph
+            # containing the answer
+            else:
+                # Clean the context
+                context_en = self.clean_context(context_candidates[0])
 
-            # Set the answer start to the index of the answer in the context
-            answer_start = context_en.index(answer)
+                # Set the answer start to the index of the answer in the context
+                answer_start = context_en.index(answer)
 
         # Otherwise, we want to use the long answer as the context
         else:
