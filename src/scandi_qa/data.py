@@ -124,10 +124,46 @@ class ScandiQADataset:
         long_answer = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
         # Remove the Wikipedia reference tags from the long answer
-        long_answer = re.sub(r"\[[0-9]+\]", "", long_answer)
+        long_answer = re.sub(r"\[[0-9]+\]", "", long_answer).strip()
 
         # Add the long answer to the example
-        example["context_en"] = long_answer.strip()
+        example["context_en"] = long_answer
+
+        # Get the answer along with the byte indices
+        answer_dict = example["annotations"]["short_answers"][0]
+        answer = answer_dict["text"]
+        answer_start = answer_dict["start_byte"]
+        answer_end = answer_dict["end_byte"]
+
+        # Double-check that the start and stop byte indices of the answer is indeed
+        # the answer
+        assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
+
+        # Check how many times the answer appears in the context
+        answer_count = long_answer.count(answer)
+
+        # If the answer appears only once, then we identify the start index by simply
+        # using the `index` method
+        if answer_count == 1:
+            answer_start = long_answer.index(answer)
+
+        # Otherwise, we need to find what occurence our desired answer is in the
+        # HTML context, and find the corresponding start index in the parsed context
+        else:
+            # Find all start indices of the answer in the HTML context
+            answer_html_idxs = [s.start() for s in re.finditer(answer, html_bytes)]
+
+            # Find the occurence of the desired answer in the HTML context
+            answer_occurence = answer_html_idxs.index(answer_start)
+
+            # Find all start indices of the answer in the parsed context
+            answer_parsed_idxs = [s.start() for s in re.finditer(answer, long_answer)]
+
+            # Extract the start index of the desired answer in the parsed context
+            answer_start = answer_parsed_idxs[answer_occurence]
+
+        # Add the answer start index to the example
+        example["answer_start"] = answer_start
 
         # Rename the 'id' to 'example_id'
         example["example_id"] = example["id"]
