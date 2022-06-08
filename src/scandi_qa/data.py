@@ -108,6 +108,34 @@ class ScandiQADataset:
         return np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
 
     @staticmethod
+    def clean_question(question: str) -> str:
+        """Clean the question of an MKQA example.
+
+        Args:
+            question (str):
+                The question to clean.
+
+        Returns:
+            str:
+                The cleaned question.
+        """
+        # Remove multiple whitespace
+        cleaned_question = re.sub(r"\s+", " ", question)
+
+        # Ensure that the question is title cased
+        cleaned_question = cleaned_question.title()
+
+        # Strip the question of any leading or trailing whitespace
+        cleaned_question = cleaned_question.strip()
+
+        # Add a question mark at the end of the question if it is missing
+        if not cleaned_question.endswith("?"):
+            cleaned_question += "?"
+
+        # Return the cleaned question
+        return cleaned_question
+
+    @staticmethod
     def clean_context(context: str) -> str:
         """Clean the context of an Natural Questions example.
 
@@ -319,6 +347,9 @@ class ScandiQADataset:
         # Get the language-specific queries and answers
         mkqa["question"] = mkqa.queries.map(lambda dct: dct[self.language])
         mkqa["answer"] = mkqa.answers.map(lambda dct: dct[self.language][0]["text"])
+
+        # Clean the questions
+        mkqa.question = mkqa.question.map(self.clean_question)
 
         # Remove the 'queries' and 'answers' columns
         mkqa.drop(columns=["query", "queries", "answers"], inplace=True)
