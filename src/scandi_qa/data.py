@@ -71,15 +71,10 @@ class ScandiQADataset:
                 # Process the example
                 example = self._process_nq_example(example)
 
-                # Extract the answer
-                answer = self.mkqa.loc[example_id].answer
-
-                # Check if the answer either does not exist or appears uniquely in the
-                # context, in which case we add the context to the dictionary
-                if answer is None:
-                    titles[example_id] = example["title_en"]
-                    contexts[example_id] = example["context_en"]
-                    answer_starts[example_id] = example["answer_start_en"]
+                # Add the context to the dictionary
+                titles[example_id] = example["title_en"]
+                contexts[example_id] = example["context_en"]
+                answer_starts[example_id] = example["answer_start_en"]
 
         # Add the titles and contexts as columns in the MKQA dataset
         self.mkqa["title_en"] = self.mkqa.index.map(titles)
