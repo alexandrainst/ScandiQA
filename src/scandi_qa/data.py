@@ -268,8 +268,9 @@ class ScandiQADataset:
             # Get the answer dictionary
             answer_dict = example["annotations"]["short_answers"][0]
 
-            # If the answer does not exist then set the answer start to -1
-            if not has_answer:
+            # If the answer does not exist or does not occur in the context then set
+            # the answer start to -1
+            if not has_answer or answer not in context_en:
                 answer_start = -1
 
             # Otherwise, if there *is* an answer but no answer in the Natural Questions
