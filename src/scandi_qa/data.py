@@ -178,7 +178,8 @@ class ScandiQADataset:
         title = example["document"]["title"]
 
         # Extract the document bytes of the raw HTML context
-        html_bytes = example["document"]["html"].encode("utf-8")
+        html = example["document"]["html"]
+        html_bytes = html.encode("utf-8")
 
         # Extract the byte indices of the long answer
         long_answer_dict = example["annotations"]["long_answer"][0]
@@ -194,7 +195,7 @@ class ScandiQADataset:
         # contain one but the answer does not appear in the context, and the long
         # answer does not exist, then we want to set the context to the <p> tag which
         # has the largest semantic similarity to the question
-        if (not has_answer or (has_answer and answer not in html_bytes)) and (
+        if (not has_answer or answer not in html) and (
             long_answer_start == -1 or long_answer_end == -1
         ):
 
@@ -231,9 +232,9 @@ class ScandiQADataset:
         # Otherwise, if there *is* an answer in the MKQA dataset which also appears in
         # the context, but no long answer exists, then we want to extract the paragraph
         # from the HTML context that contains the answer.
-        if (
+        elif (
             has_answer
-            and answer in html_bytes
+            and answer in html
             and (long_answer_start == -1 or long_answer_end == -1)
         ):
 
