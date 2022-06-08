@@ -104,6 +104,30 @@ class ScandiQADataset:
         """
         return np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
 
+    @staticmethod
+    def clean_context(context: str) -> str:
+        """Clean the context of an Natural Questions example.
+
+        Args:
+            context (str):
+                The context to clean.
+
+        Returns:
+            str:
+                The cleaned context.
+        """
+        # Remove the Wikipedia reference tags from the context
+        context = re.sub(r"\[([0-9]+|citation needed)\]", "", context)
+
+        # Strip context of trailing whitespace and newlines
+        context = context.strip().strip("\n")
+
+        # Double-check that the context is not empty
+        assert len(context) > 0
+
+        # Return the cleaned context
+        return context
+
     def _process_nq_example(self, example: Example) -> Example:
         """Processes an example from the NQ dataset.
 
@@ -158,14 +182,8 @@ class ScandiQADataset:
             # Get the paragraph with the largest similarity
             context_en = paragraphs[similarities.index(max(similarities))]
 
-            # Remove the Wikipedia reference tags from the context
-            context_en = re.sub(r"\[([0-9]+|citation needed)\]", "", context_en)
-
-            # Strip context of trailing whitespace and newlines
-            context_en = context_en.strip().strip("\n")
-
-            # Double-check that the context is not empty
-            assert len(context_en) > 0
+            # Clean the context
+            context_en = self.clean_context(context_en)
 
             # Set the answer start to -1
             answer_start = -1
@@ -179,14 +197,8 @@ class ScandiQADataset:
             # Parse the HTML to get the long answer as plain text
             context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
-            # Remove the Wikipedia reference tags from the context
-            context_en = re.sub(r"\[([0-9]+|citation needed)\]", "", context_en)
-
-            # Strip context of trailing whitespace and newlines
-            context_en = context_en.strip().strip("\n")
-
-            # Double-check that the context is not empty
-            assert len(context_en) > 0
+            # Clean the context
+            context_en = self.clean_context(context_en)
 
             # Get the answer dictionary
             answer_dict = example["annotations"]["short_answers"][0]
