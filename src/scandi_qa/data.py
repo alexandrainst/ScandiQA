@@ -140,11 +140,11 @@ class ScandiQADataset:
                 The processed example, with keys 'example_id', 'title_en', 'context_en'
                 and 'answer_start_en'.
         """
+        # Extract the example ID
+        example_id = int(example["id"])
+
         # Extract the title
         title = example["document"]["title"]
-
-        # Add the title to the example
-        example["title_en"] = title
 
         # Extract the document bytes of the raw HTML context
         html_bytes = example["document"]["html"].encode("utf-8")
@@ -154,9 +154,18 @@ class ScandiQADataset:
         long_answer_start = long_answer_dict["start_byte"]
         long_answer_end = long_answer_dict["end_byte"]
 
-        # If the long answer does not exist, then we want to set the context to the
-        # <p> tag which has the largest semantic similarity to the question
-        if long_answer_start == -1 or long_answer_end == -1:
+        # Store variable on whether the MKQA dataset contains an answer for the
+        # example
+        answer = self.mkqa.loc[example_id, "answer"]
+        has_answer = answer is not None
+
+        # If the MKQA dataset does not contain an answer for the example, or if it does
+        # contain one but the answer does not appear in the context, and the long
+        # answer does not exist, then we want to set the context to the <p> tag which
+        # has the largest semantic similarity to the question
+        if (not has_answer or (has_answer and answer not in html_bytes)) and (
+            long_answer_start == -1 or long_answer_end == -1
+        ):
 
             # Get the question
             question = example["question"]["text"]
@@ -188,6 +197,30 @@ class ScandiQADataset:
             # Set the answer start to -1
             answer_start = -1
 
+        # Otherwise, if there *is* an answer in the MKQA dataset which also appears in
+        # the context, but no long answer exists, then we want to extract the paragraph
+        # from the HTML context that contains the answer.
+        if (
+            has_answer
+            and answer in html_bytes
+            and (long_answer_start == -1 or long_answer_end == -1)
+        ):
+
+            # Extract all the paragraphs from the HTML context. These are all the <p>
+            # tags in the HTML context
+            soup = BeautifulSoup(html_bytes, "html.parser")
+            context_en = [
+                p.get_text().strip("\n")
+                for p in soup.find_all("p")
+                if answer in p.get_text()
+            ][0]
+
+            # Clean the context
+            context_en = self.clean_context(context_en)
+
+            # Set the answer start to the index of the answer in the context
+            answer_start = context_en.index(answer)
+
         # Otherwise, we want to use the long answer as the context
         else:
 
@@ -203,11 +236,18 @@ class ScandiQADataset:
             # Get the answer dictionary
             answer_dict = example["annotations"]["short_answers"][0]
 
-            # If there is no answer then set the answer start to -1
-            if len(answer_dict["text"]) == 0:
+            # If the answer does not exist then set the answer start to -1
+            if not has_answer:
                 answer_start = -1
 
-            # Otherwise, if there is an answer then extract the answer start index
+            # Otherwise, if there *is* an answer but no answer in the Natural Questions
+            # dataset, then we set the answer start to the index of the answer in the
+            # context
+            elif len(answer_dict["text"]) == 0:
+                answer_start = context_en.index(answer)
+
+            # Otherwise, if there is an answer both in MKQA and Natural Questions, then
+            # we extract the answer start index
             else:
 
                 # Get the answer text, and the byte indices of the answer
@@ -248,14 +288,11 @@ class ScandiQADataset:
                     # context
                     answer_start = answer_parsed_idxs[answer_occurence]
 
-        # Add the context to the example
+        # Add the example ID, title, context and answer start index to the example
+        example["example_id"] = example_id
+        example["title_en"] = title
         example["context_en"] = context_en
-
-        # Add the answer start index to the example
         example["answer_start_en"] = answer_start
-
-        # Rename the 'id' to 'example_id'
-        example["example_id"] = example["id"]
 
         # Remove the 'id', 'document', 'question' and 'annotations' keys
         example.pop("id")
