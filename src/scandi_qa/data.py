@@ -2,10 +2,12 @@
 
 import re
 
+import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from datasets import Dataset, load_dataset
 from datasets.arrow_dataset import Example
+from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 
 
@@ -35,6 +37,7 @@ class ScandiQADataset:
         self.nq = load_dataset(
             "natural_questions", split="train", cache_dir=self.cache_dir
         )
+        self.sbert = SentenceTransformer("all-mpnet-base-v2")
 
     def add_english_contexts(self):
         """Adds English contexts to the MKQA dataset.
@@ -87,11 +90,24 @@ class ScandiQADataset:
 
         return self
 
+    @staticmethod
+    def similarity(emb1: np.ndarray, emb2: np.ndarray) -> float:
+        """Compute the cosine similarity between two embeddings.
+
+        Args:
+            emb1 (np.ndarray):
+                The first embedding.
+            emb2 (np.ndarray):
+                The second embedding.
+
+        Returns:
+            float:
+                The cosine similarity between the two embeddings.
+        """
+        return np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
+
     def _process_nq_example(self, example: Example) -> Example:
         """Processes an example from the NQ dataset.
-
-        This extracts the long answer to be used as the context for the query and
-        answer, as well as the example ID.
 
         Args:
             example (Example):
@@ -99,8 +115,8 @@ class ScandiQADataset:
 
         Returns:
             Example:
-                The processed example, with keys 'example_id', 'title_en' and
-                'context_en'.
+                The processed example, with keys 'example_id', 'title_en', 'context_en'
+                and 'answer_start_en'.
         """
         # Extract the title
         title = example["document"]["title"]
@@ -116,50 +132,89 @@ class ScandiQADataset:
         long_answer_start = long_answer_dict["start_byte"]
         long_answer_end = long_answer_dict["end_byte"]
 
-        # Extract the long answer as HTML
-        long_answer_html = html_bytes[long_answer_start:long_answer_end]
+        # If the long answer does not exist, then we want to set the context to the
+        # <p> tag which has the largest semantic similarity to the question
+        if long_answer_start == -1 or long_answer_end == -1:
 
-        # Parse the HTML to get the long answer as plain text
-        long_answer = BeautifulSoup(long_answer_html, "html.parser").get_text()
+            # Get the question
+            question = example["question"]["text"]
 
-        # Remove the Wikipedia reference tags from the long answer
-        long_answer = re.sub(r"\[[0-9]+\]", "", long_answer).strip()
+            # Embed the question
+            question_emb = self.sbert.encode(question)
 
-        # Add the long answer to the example
-        example["context_en"] = long_answer
+            # Extract all the paragraphs from the HTML context. These are all the <p>
+            # tags in the HTML context which contain more than 10 characters
+            soup = BeautifulSoup(html_bytes, "html.parser")
+            paragraphs = [
+                p.get_text().strip("\n")
+                for p in soup.find_all("p")
+                if len(p.get_text()) > 10
+            ]
 
-        # Get the answer along with the byte indices
-        answer_dict = example["annotations"]["short_answers"][0]
-        answer = answer_dict["text"]
-        answer_start = answer_dict["start_byte"]
-        answer_end = answer_dict["end_byte"]
+            # Embed all the paragraphs
+            paragraphs_emb = [self.sbert.encode(p) for p in paragraphs]
 
-        # Double-check that the start and stop byte indices of the answer is indeed
-        # the answer
-        assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
+            # Compute the similarity between the question and all the paragraphs
+            similarities = [self.similarity(question_emb, p) for p in paragraphs_emb]
 
-        # Check how many times the answer appears in the context
-        answer_count = long_answer.count(answer)
+            # Get the paragraph with the largest similarity
+            context_en = paragraphs[similarities.index(max(similarities))]
 
-        # If the answer appears only once, then we identify the start index by simply
-        # using the `index` method
-        if answer_count == 1:
-            answer_start = long_answer.index(answer)
+            # Set the answer start to -1
+            answer_start = -1
 
-        # Otherwise, we need to find what occurence our desired answer is in the
-        # HTML context, and find the corresponding start index in the parsed context
+        # Otherwise, we want to use the long answer as the context
         else:
-            # Find all start indices of the answer in the HTML context
-            answer_html_idxs = [s.start() for s in re.finditer(answer, html_bytes)]
 
-            # Find the occurence of the desired answer in the HTML context
-            answer_occurence = answer_html_idxs.index(answer_start)
+            # Extract the long answer as HTML
+            long_answer_html = html_bytes[long_answer_start:long_answer_end]
 
-            # Find all start indices of the answer in the parsed context
-            answer_parsed_idxs = [s.start() for s in re.finditer(answer, long_answer)]
+            # Parse the HTML to get the long answer as plain text
+            long_answer = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
-            # Extract the start index of the desired answer in the parsed context
-            answer_start = answer_parsed_idxs[answer_occurence]
+            # Remove the Wikipedia reference tags from the long answer
+            context_en = re.sub(r"\[[0-9]+\]", "", long_answer).strip()
+
+            # Get the answer along with the byte indices
+            answer_dict = example["annotations"]["short_answers"][0]
+            answer = answer_dict["text"]
+            answer_start = answer_dict["start_byte"]
+            answer_end = answer_dict["end_byte"]
+
+            # Double-check that the start and stop byte indices of the answer is indeed
+            # the answer
+            assert answer == html_bytes[answer_start:answer_end].decode("utf-8")
+
+            # Check how many times the answer appears in the context
+            answer_count = context_en.count(answer)
+
+            # If the answer appears only once, then we identify the start index by simply
+            # using the `index` method
+            if answer_count == 1:
+                answer_start = context_en.index(answer)
+
+            # Otherwise, we need to find what occurence our desired answer is in the
+            # HTML context, and find the corresponding start index in the parsed context
+            else:
+                # Find all start indices of the answer in the HTML context
+                answer_html_idxs = [s.start() for s in re.finditer(answer, html_bytes)]
+
+                # Find the occurence of the desired answer in the HTML context
+                answer_occurence = answer_html_idxs.index(answer_start)
+
+                # Find all start indices of the answer in the parsed context
+                answer_parsed_idxs = [
+                    s.start() for s in re.finditer(answer, long_answer)
+                ]
+
+                # Extract the start index of the desired answer in the parsed context
+                answer_start = answer_parsed_idxs[answer_occurence]
+
+        # Double-check that the context is not empty
+        assert len(context_en) > 0
+
+        # Add the context to the example
+        example["context_en"] = context_en
 
         # Add the answer start index to the example
         example["answer_start_en"] = answer_start
