@@ -47,6 +47,7 @@ class ScandiQADataset:
         # examples
         titles = dict()
         contexts = dict()
+        answer_starts = dict()
 
         # Iterate over the examples in the natural questions dataset
         for example in tqdm(self.nq, desc="Processing examples"):
@@ -69,22 +70,20 @@ class ScandiQADataset:
 
                 # Check if the answer either does not exist or appears uniquely in the
                 # context, in which case we add the context to the dictionary
-                if answer is None or example["context_en"].count(answer) == 1:
+                if answer is None:
                     titles[example_id] = example["title_en"]
                     contexts[example_id] = example["context_en"]
+                    answer_starts[example_id] = example["answer_start_en"]
 
         # Add the titles and contexts as columns in the MKQA dataset
         self.mkqa["title_en"] = self.mkqa.index.map(titles)
         self.mkqa["context_en"] = self.mkqa.index.map(contexts)
+        self.mkqa["answer_start_en"] = self.mkqa.index.map(answer_starts)
 
         # Remove the rows with missing contexts
-        self.mkqa.dropna(subset=["title_en", "context_en"], inplace=True)
-
-        # Add answer_start column
-        self.mkqa["answer_start"] = [
-            -1 if row.answer is None else row.context_en.index(row.answer)
-            for _, row in self.mkqa.iterrows()
-        ]
+        self.mkqa.dropna(
+            subset=["title_en", "context_en", "answer_start_en"], inplace=True
+        )
 
         return self
 
@@ -163,7 +162,7 @@ class ScandiQADataset:
             answer_start = answer_parsed_idxs[answer_occurence]
 
         # Add the answer start index to the example
-        example["answer_start"] = answer_start
+        example["answer_start_en"] = answer_start
 
         # Rename the 'id' to 'example_id'
         example["example_id"] = example["id"]
