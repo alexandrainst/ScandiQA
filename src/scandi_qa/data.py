@@ -148,16 +148,16 @@ class ScandiQADataset:
                 The cleaned context.
         """
         # Remove the Wikipedia reference tags from the context
-        context = re.sub(r"\[([0-9]+|citation needed)\]", "", context)
+        cleaned_context = re.sub(r"\[([0-9]+|citation needed)\]", "", context)
 
         # Strip context of trailing whitespace and newlines
-        context = context.strip().strip("\n")
+        cleaned_context = cleaned_context.strip().strip("\n")
 
-        # Double-check that the context is not empty
-        assert len(context) > 0
+        # Check that the cleaned context is not empty
+        assert len(cleaned_context) > 0
 
         # Return the cleaned context
-        return context
+        return cleaned_context
 
     def _process_nq_example(self, example: Example) -> Example:
         """Processes an example from the NQ dataset.
