@@ -120,7 +120,7 @@ class ScandiQADataset:
         long_answer = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
         # Remove the Wikipedia reference tags from the long answer
-        long_answer = re.sub(r"\[[0-9]\]", "", long_answer)
+        long_answer = re.sub(r"\[[0-9]+\]", "", long_answer)
 
         # Add the long answer to the example
         example["context_en"] = long_answer.strip()
