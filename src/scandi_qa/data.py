@@ -364,8 +364,12 @@ class ScandiQADataset:
 
     def push_to_hub(self):
         """Pushes the dataset to the Hugging Face Hub."""
+        # Convert to a Hugging Face Dataset
         mkqa_dataset = Dataset.from_pandas(self.mkqa)
+
+        # Push the dataset to the Hub
         mkqa_dataset.push_to_hub(f"mkqa_{self.language}")
+
         return self
 
 
