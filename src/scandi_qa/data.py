@@ -247,14 +247,17 @@ class ScandiQADataset:
             # Extract all the paragraphs from the HTML context. These are all the <p>
             # tags in the HTML context
             soup = BeautifulSoup(html_bytes, "html.parser")
-            context_en = list(
-                {
-                    p.get_text().strip("\n")
-                    for tag in [soup] + soup.find_all("div")
-                    for p in tag.find_all("p")
-                    if answer in p.get_text().strip("\n")
-                }
-            )[0]
+            try:
+                context_en = list(
+                    {
+                        p.get_text().strip("\n")
+                        for tag in [soup] + soup.find_all("div")
+                        for p in tag.find_all("p")
+                        if answer in p.get_text().strip("\n")
+                    }
+                )[0]
+            except IndexError:
+                breakpoint()
 
             if len(context_en) == 0:
                 breakpoint()
