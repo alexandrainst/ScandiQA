@@ -50,6 +50,24 @@ class ScandiQADataset:
         )
         self.sbert = SentenceTransformer("all-mpnet-base-v2")
 
+    def build(self):
+        """Builds the dataset and pushes it to the Hugging Face Hub."""
+
+        # Add English contexts
+        self.add_english_contexts()
+
+        # Translate the English contexts and change the answer if necessary
+        desc = "Translating contexts"
+        with tqdm(self.mkqa.iterrows(), total=len(self.mkqa), desc=desc) as pbar:
+            self.mkqa = pd.DataFrame.from_records(
+                [self._translate_context(example) for _, example in pbar]
+            )
+
+        # Push to the Hub
+        self.push_to_hub()
+
+        return self
+
     def add_english_contexts(self):
         """Adds English contexts to the MKQA dataset.
 
