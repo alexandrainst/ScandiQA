@@ -11,6 +11,14 @@ from datasets.arrow_dataset import Example
 from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 
+from .translation import DeepLTranslator
+from .utils import (
+    DANISH_NUMERALS,
+    ENGLISH_NUMERALS,
+    NORWEGIAN_NUMERALS,
+    SWEDISH_NUMERALS,
+)
+
 
 class ScandiQADataset:
     """ScandiQA dataset class.
@@ -49,6 +57,7 @@ class ScandiQADataset:
             "natural_questions", split="train", cache_dir=self.cache_dir
         )
         self.sbert = SentenceTransformer("all-mpnet-base-v2")
+        self.translator = DeepLTranslator()
 
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
@@ -79,7 +88,6 @@ class ScandiQADataset:
         # examples
         titles = dict()
         contexts = dict()
-        answer_starts = dict()
 
         # Iterate over the examples in the natural questions dataset
         for example in tqdm(self.nq, desc="Processing examples"):
@@ -100,25 +108,56 @@ class ScandiQADataset:
                 # Add the context to the dictionary
                 titles[example_id] = example["title_en"]
                 contexts[example_id] = example["context_en"]
-                answer_starts[example_id] = example["answer_start_en"]
 
         # Add the titles and contexts as columns in the MKQA dataset
         self.mkqa["title_en"] = self.mkqa.index.map(titles)
         self.mkqa["context_en"] = self.mkqa.index.map(contexts)
-        self.mkqa["answer_start_en"] = self.mkqa.index.map(answer_starts)
 
         # Remove the rows with missing contexts
-        self.mkqa.dropna(
-            subset=["title_en", "context_en", "answer_start_en"], inplace=True
-        )
-
-        # Cast the `answer_start_en` column as integer
-        self.mkqa.answer_start_en = self.mkqa.answer_start_en.astype(int)
+        self.mkqa.dropna(subset=["title_en", "context_en"], inplace=True)
 
         return self
 
+    def push_to_hub(self):
+        """Pushes the dataset to the Hugging Face Hub."""
+        # Convert to a Hugging Face Dataset
+        mkqa_dataset = Dataset.from_pandas(self.mkqa)
+
+        # Push the dataset to the Hub
+        mkqa_dataset.push_to_hub(f"mkqa_{self.language}")
+
+        return self
+
+    def build_mkqa(self) -> pd.DataFrame:
+        """Builds the MKQA dataset for the given language.
+
+        Returns:
+            Pandas DataFrame:
+                The MKQA dataset for the given language.
+        """
+        # Load the raw MKQA dataset
+        mkqa = load_dataset("mkqa", split="train", cache_dir=self.cache_dir).to_pandas()
+
+        # Get the language-specific queries and answers
+        mkqa["question"] = mkqa.queries.map(lambda dct: dct[self.language])
+        mkqa["answer"] = mkqa.answers.map(lambda dct: dct[self.language][0]["text"])
+        mkqa["answer_en"] = mkqa.answers.map(lambda dct: dct["en"][0]["text"])
+
+        # Clean the questions
+        mkqa.question = mkqa.question.map(self._clean_question)
+
+        # Remove the 'queries' and 'answers' columns
+        mkqa.drop(columns=["query", "queries", "answers"], inplace=True)
+
+        # Set the index to the example ID
+        mkqa = mkqa.astype(dict(example_id="int64"))
+        mkqa.set_index("example_id", inplace=True)
+
+        # Return the processed MKQA dataset
+        return mkqa
+
     @staticmethod
-    def similarity(emb1: np.ndarray, emb2: np.ndarray) -> float:
+    def _similarity(emb1: np.ndarray, emb2: np.ndarray) -> float:
         """Compute the cosine similarity between two embeddings.
 
         Args:
@@ -134,7 +173,7 @@ class ScandiQADataset:
         return np.dot(emb1, emb2) / (np.linalg.norm(emb1) * np.linalg.norm(emb2))
 
     @staticmethod
-    def clean_question(question: str) -> str:
+    def _clean_question(question: str) -> str:
         """Clean the question of an MKQA example.
 
         Args:
@@ -162,7 +201,7 @@ class ScandiQADataset:
         return cleaned_question
 
     @staticmethod
-    def clean_context(context: str) -> str:
+    def _clean_context(context: str) -> str:
         """Clean the context of an Natural Questions example.
 
         Args:
@@ -197,8 +236,8 @@ class ScandiQADataset:
 
         Returns:
             Example:
-                The processed example, with keys 'example_id', 'title_en', 'context_en'
-                and 'answer_start_en'.
+                The processed example, with keys 'example_id', 'title_en' and
+                'context_en'.
         """
         # Extract the example ID
         example_id = int(example["id"])
@@ -215,18 +254,27 @@ class ScandiQADataset:
         long_answer_start = long_answer_dict["start_byte"]
         long_answer_end = long_answer_dict["end_byte"]
 
-        # Store variable on whether the MKQA dataset contains an answer for the
-        # example
-        answer = self.mkqa.loc[example_id, "answer"]
-        has_answer = answer is not None
+        # Define variable determining whether the long answer exists
+        has_long_answer = long_answer_start != -1 and long_answer_end != -1
 
-        # If the MKQA dataset does not contain an answer for the example, or if it does
-        # contain one but the answer does not appear in the context, and the long
-        # answer does not exist, then we want to set the context to the <p> tag which
-        # has the largest semantic similarity to the question
-        if (not has_answer or answer not in html) and (
-            long_answer_start == -1 or long_answer_end == -1
-        ):
+        # Define variable on whether the MKQA dataset contains an answer for the
+        # example
+        answer_en = self.mkqa.loc[example_id, "answer_en"]
+        mkqa_has_answer = answer_en is not None
+
+        # If the long answer exists then use this as the context
+        if has_long_answer:
+
+            # Extract the long answer as HTML
+            long_answer_html = html_bytes[long_answer_start:long_answer_end]
+
+            # Parse the HTML to get the long answer as plain text
+            context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
+
+        # Otherwise, if there is neither a long answer nor an answer in MKQA then use
+        # the <p> tag that has the largest cosine similarity with the question as the
+        # context
+        elif not mkqa_has_answer:
 
             # Get the question
             question = example["question"]["text"]
@@ -234,8 +282,9 @@ class ScandiQADataset:
             # Embed the question
             question_emb = self.sbert.encode(question)
 
-            # Extract all the paragraphs from the HTML context. These are all the <p>
-            # tags in the HTML context which contain more than 10 characters
+            # Extract all the paragraphs from the HTML context. These are all the <p>,
+            # <span> and <table> tags in the HTML context which contain more than 10
+            # characters
             soup = BeautifulSoup(html_bytes, "html.parser")
             context_candidates = [
                 tag.get_text().strip("\n")
@@ -244,144 +293,91 @@ class ScandiQADataset:
                 if len(tag.get_text()) > 10
             ]
 
-            # If no candidate contexts were found then we set the context to None,
-            # which will mean that this example will be excluded from the dataset
+            # If no candidate contexts were found then we discard the example by
+            # setting the context to None
             if len(context_candidates) == 0:
                 context_en = None
-                answer_start = None
 
-            # Embed all the paragraphs
-            candidate_embs = [self.sbert.encode(ctx) for ctx in context_candidates]
+            # Otherwise, we find the context with the highest cosine similarity with
+            # the question
+            else:
+                # Embed all the paragraphs
+                candidate_embs = [self.sbert.encode(ctx) for ctx in context_candidates]
 
-            # Compute the similarity between the question and all the paragraphs
-            similarities = [self.similarity(question_emb, p) for p in candidate_embs]
+                # Compute the similarity between the question and all the paragraphs
+                similarities = [
+                    self._similarity(question_emb, p) for p in candidate_embs
+                ]
 
-            # Get the paragraph with the largest similarity
-            context_en = context_candidates[similarities.index(max(similarities))]
+                # Get the paragraph with the largest similarity
+                context_en = context_candidates[similarities.index(max(similarities))]
 
-            # Clean the context
-            context_en = self.clean_context(context_en)
+        # Otherwise, we extract all the answer candidates from the English version of
+        # the MKQA answer
+        else:
 
-            # Set the answer start to -1
-            answer_start = -1
+            # Create singleton list of answer candidates
+            answer_candidates = [answer_en]
 
-        # Otherwise, if there *is* an answer in the MKQA dataset which also appears in
-        # the context, but no long answer exists, then we want to extract the paragraph
-        # from the HTML context that contains the answer.
-        elif (
-            has_answer
-            and answer in html
-            and (long_answer_start == -1 or long_answer_end == -1)
-        ):
+            # If the answer looks like an integer, then add the corresponding
+            # written form of the integer to the answer candidates
+            if re.match(r"^[0-9]+(\.0)?$", answer_en) is not None:
 
-            # Extract all the paragraphs from the HTML context. These are all the <p>
-            # tags in the HTML context
+                # Extract the integer
+                integer = int(answer_en)
+
+                # Add the written form of the integer to the answer candidates
+                answer_candidates.extend(ENGLISH_NUMERALS[integer])
+
+            # Extract all the <p>, <span> and <table> tags in the HTML context which
+            # contain more than 10 characters and which contain a candidate answer
             soup = BeautifulSoup(html_bytes, "html.parser")
             context_candidates = [
                 tag.get_text().strip("\n")
                 for tag_name in ["p", "span", "table"]
                 for tag in soup.find_all(tag_name)
-                if answer in tag.get_text().strip("\n")
+                if len(tag.get_text()) > 10
+                and any(
+                    candidate.lower() in tag.get_text().lower()
+                    for candidate in answer_candidates
+                )
             ]
 
-            # If no candidate contexts were found then we set the context to None,
-            # which will mean that this example will be excluded from the dataset
+            # If none of the candidate contexts were found then we discard the
+            # example by setting the context to None
             if len(context_candidates) == 0:
                 context_en = None
-                answer_start = None
 
-            # Otherwise, we set the answer start to the index of the first paragraph
-            # containing the answer
-            else:
-                # Clean the context
-                context_en = self.clean_context(context_candidates[0])
-
-                # Set the answer start to the index of the answer in the context
-                answer_start = context_en.index(answer)
-
-        # Otherwise, we want to use the long answer as the context
-        else:
-
-            # Extract the long answer as HTML
-            long_answer_html = html_bytes[long_answer_start:long_answer_end]
-
-            # Parse the HTML to get the long answer as plain text
-            context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
-
-            if len(context_en) == 0:
-                breakpoint()
-
-            # Clean the context
-            context_en = self.clean_context(context_en)
-
-            # Get the answer dictionary
-            answer_dict = example["annotations"]["short_answers"][0]
-
-            # If the answer does not exist or does not occur in the context then set
-            # the answer start to -1
-            if not has_answer or answer not in context_en:
-                answer_start = -1
-
-            # Otherwise, if there *is* an answer but no answer in the Natural Questions
-            # dataset, then we set the answer start to the index of the answer in the
-            # context
-            elif len(answer_dict["text"]) == 0:
-                answer_start = context_en.index(answer)
-
-            # Otherwise, if there is an answer both in MKQA and Natural Questions, then
-            # we extract the answer start index
+            # Otherwise, we choose the context candidate with the highest cosine
+            # similarity with the question
             else:
 
-                # Check how many times the answer appears in the context
-                answer_count = context_en.count(answer)
+                # Get the question
+                question = example["question"]["text"]
 
-                # If the answer appears only once, then we identify the start index by
-                # simply using the `index` method
-                if answer_count == 1:
-                    answer_start = context_en.index(answer)
+                # Embed the question
+                question_emb = self.sbert.encode(question)
 
-                # Otherwise, we need to find what occurence our desired answer is in
-                # the HTML context, and find the corresponding start index in the
-                # parsed context
-                else:
-                    # Get the Natural Questions answer start byte index
-                    nq_answer_start = answer_dict["start_byte"][0]
+                # Embed all the candidate contexts
+                candidate_embs = [self.sbert.encode(ctx) for ctx in context_candidates]
 
-                    # If the Natural Questions answer start byte index does indeed
-                    # correspond to the MKQA answer then use this to extract the
-                    # corresponding start index from the parsed HTML
-                    if (
-                        html_bytes[nq_answer_start : nq_answer_start + len(answer)]
-                        == answer
-                    ):
+                # Compute the similarity between the question and all the candidate
+                # contexts
+                similarities = [
+                    self._similarity(question_emb, p) for p in candidate_embs
+                ]
 
-                        # Find all start indices of the answer in the HTML context
-                        answer_html_idxs = [
-                            s.start() for s in re.finditer(answer, html_bytes)
-                        ]
+                # Get the candidate context with the largest similarity
+                context_en = context_candidates[similarities.index(max(similarities))]
 
-                        # Find the occurence of the desired answer in the HTML context
-                        answer_occurence = answer_html_idxs.index(nq_answer_start)
+        # Clean the context if it exists
+        if context_en is not None:
+            context_en = self._clean_context(context_en)
 
-                        # Find all start indices of the answer in the parsed context
-                        answer_parsed_idxs = [
-                            s.start() for s in re.finditer(answer, context_en)
-                        ]
-
-                        # Extract the start index of the desired answer in the parsed
-                        # context
-                        answer_start = answer_parsed_idxs[answer_occurence]
-
-                    # Otherwise, we set the answer start to the first occurence of the
-                    # MKQA answer
-                    else:
-                        answer_start = context_en.index(answer)
-
-        # Add the example ID, title, context and answer start index to the example
+        # Add the example ID, title and context to the example
         example["example_id"] = example_id
         example["title_en"] = title
         example["context_en"] = context_en
-        example["answer_start_en"] = answer_start
 
         # Remove the 'id', 'document', 'question' and 'annotations' keys
         example.pop("id")
@@ -392,47 +388,90 @@ class ScandiQADataset:
         # Return the processed example
         return example
 
-    def build_mkqa(self) -> pd.DataFrame:
-        """Builds the MKQA dataset for the given language.
+    def _translate_context(self, example: pd.Series) -> dict:
+        """Translate the English context to the target language.
+
+        Args:
+            example (pd.Series):
+                The MKQA example with an English context that needs to be translated.
 
         Returns:
-            Pandas DataFrame:
-                The MKQA dataset for the given language.
+            dict:
+                The example with the translated context.
         """
-        # Load the raw MKQA dataset
-        mkqa = load_dataset("mkqa", split="train", cache_dir=self.cache_dir).to_pandas()
+        # Translate the English context
+        example.context = self.translator(example.context_en, target_lang=self.language)
 
-        # Get the language-specific queries and answers
-        mkqa["question"] = mkqa.queries.map(lambda dct: dct[self.language])
-        mkqa["answer"] = mkqa.answers.map(lambda dct: dct[self.language][0]["text"])
+        # If the example does not have an answer then we simply use the translated
+        # context as the new context
+        if example.answer is None:
+            return example.to_dict()
 
-        # Clean the questions
-        mkqa.question = mkqa.question.map(self.clean_question)
+        # If the example has an answer then we extract answer candidates from the
+        # MKQA answers. If none of the answer candidates appear in the translated
+        # context then we discard the example by setting the context to None.
+        # Otherwise, we set the answer candidate appearing in the translated context
+        # as the answer, and the translated context as the context.
+        else:
 
-        # Remove the 'queries' and 'answers' columns
-        mkqa.drop(columns=["query", "queries", "answers"], inplace=True)
+            # Create singleton list of answer candidates
+            answer_candidates = [example.answer]
 
-        # Set the index to the example ID
-        mkqa = mkqa.astype(dict(example_id="int64"))
-        mkqa.set_index("example_id", inplace=True)
+            # If the answer looks like an integer, then add the corresponding
+            # written form of the integer to the answer candidates
+            if re.match(r"^[0-9]+(\.0)?$", example.answer) is not None:
 
-        # Return the processed MKQA dataset
-        return mkqa
+                # Extract the integer
+                integer = int(example.answer)
 
-    def push_to_hub(self):
-        """Pushes the dataset to the Hugging Face Hub."""
-        # Convert to a Hugging Face Dataset
-        mkqa_dataset = Dataset.from_pandas(self.mkqa)
+                # Add the written form of the integer to the answer candidates
+                if self.language == "da":
+                    answer_candidates.extend(DANISH_NUMERALS[integer])
+                elif self.language == "sv":
+                    answer_candidates.extend(SWEDISH_NUMERALS[integer])
+                else:
+                    answer_candidates.extend(NORWEGIAN_NUMERALS[integer])
 
-        # Push the dataset to the Hub
-        mkqa_dataset.push_to_hub(f"mkqa_{self.language}")
+            # Create variable storing whether any of the answer candidates appear
+            # in the translated context
+            has_answer = any(
+                candidate.lower() in example.context.lower()
+                for candidate in answer_candidates
+            )
 
-        return self
+            # If none of the answer candidates appear in the translated context
+            # then we discard the example by setting the context to None
+            if not has_answer:
+                example.context = None
+                example.answer = None
+
+            # Otherwise, we set the answer candidate appearing in the translated
+            # context as the answer, and the translated context as the context
+            else:
+
+                # Extract the answer candidate appearing in the translated context
+                answer = next(
+                    candidate
+                    for candidate in answer_candidates
+                    if candidate.lower() in example.context.lower()
+                )
+
+                # Get the index at which the answer appears in the context
+                answer_idx = example.context.lower().index(answer.lower())
+
+                # Use the index to extract the answer with correct casing from the
+                # context
+                example.answer = example.context[answer_idx : answer_idx + len(answer)]
+
+            # Return the example as a dictionary
+            return example.to_dict()
 
 
 if __name__ == "__main__":
     # cache_dir = "/mnt/data_4tb/dan/.cache/huggingface"
-    for language in ["da", "sv", "no"]:
+    # languages = ["da", "sv", "no"]
+
+    languages = ["da"]
+    for language in languages:
         dataset = ScandiQADataset(language=language)
-        dataset.add_english_contexts()
-        dataset.push_to_hub()
+        dataset.build()
