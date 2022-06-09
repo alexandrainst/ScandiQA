@@ -17,8 +17,7 @@ class ScandiQADataset:
 
     Args:
         language (str, optional):
-            The language of the dataset. Needs to be a language present in MKQA.
-            Defaults to 'da'.
+            The language of the dataset. Can be "da", 'sv' or 'no. Defaults to 'da'.
         cache_dir (str, optional):
             The directory to cache the dataset. Defaults to
             '~/.cache/huggingface/datasets'.
@@ -30,11 +29,19 @@ class ScandiQADataset:
             The MKQA dataset for the given language.
         nq (Dataset):
             The Google Natural Questions dataset.
+
+    Raises:
+        ValueError:
+            If the language is not supported.
     """
 
     def __init__(
         self, language: str = "da", cache_dir: str = "~/.cache/huggingface/datasets"
     ):
+        # If the language is not supported, raise an error
+        if language not in ["da", "sv", "no"]:
+            raise ValueError(f"Language '{language}' not supported")
+
         self.language = language
         self.cache_dir = cache_dir
         self.mkqa = self.build_mkqa()
