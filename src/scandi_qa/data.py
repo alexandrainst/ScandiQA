@@ -123,8 +123,8 @@ class ScandiQADataset:
         # Remove multiple whitespace
         cleaned_question = re.sub(r"\s+", " ", question)
 
-        # Ensure that the question is title cased
-        cleaned_question = cleaned_question.title()
+        # Ensure that the first character of the question is capitalised
+        cleaned_question = cleaned_question.capitalize()
 
         # Strip the question of any leading or trailing whitespace
         cleaned_question = cleaned_question.strip()
