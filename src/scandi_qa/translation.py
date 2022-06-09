@@ -1,13 +1,10 @@
 """DeepL translation wrapper."""
 
-import itertools as it
 import os
-from typing import List, Optional, Union
+from typing import Optional
 
-import numpy as np
 import requests
 from dotenv import load_dotenv
-from tqdm.auto import tqdm
 
 # Load environment variables
 load_dotenv()
