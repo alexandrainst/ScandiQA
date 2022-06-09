@@ -1,6 +1,7 @@
 """Loading and processing of data."""
 
 import re
+import unicodedata
 
 import numpy as np
 import pandas as pd
@@ -147,8 +148,11 @@ class ScandiQADataset:
             str:
                 The cleaned context.
         """
+        # NFKC normalise the context
+        cleaned_context = unicodedata.normalize("NFKC", context)
+
         # Remove the Wikipedia reference tags from the context
-        cleaned_context = re.sub(r"\[([0-9]+|citation needed)\]", "", context)
+        cleaned_context = re.sub(r"\[([0-9]+|citation needed)\]", "", cleaned_context)
 
         # Strip context of trailing whitespace and newlines
         cleaned_context = cleaned_context.strip().strip("\n")
