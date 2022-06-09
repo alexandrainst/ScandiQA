@@ -59,18 +59,20 @@ class ScandiQADataset:
         self.sbert = SentenceTransformer("all-mpnet-base-v2")
         self.translator = DeepLTranslator()
 
+        # TEMP
+        # self.nq = self.nq.select(range(100))
+
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
 
         # Add English contexts
         self.add_english_contexts()
 
-        # Translate the English contexts and change the answer if necessary
-        desc = "Translating contexts"
-        with tqdm(self.mkqa.iterrows(), total=len(self.mkqa), desc=desc) as pbar:
-            self.mkqa = pd.DataFrame.from_records(
-                [self._translate_context(example) for _, example in pbar]
-            )
+        # Translate the English contexts
+        self.translate_contexts()
+
+        # Compute start indices of the answers
+        self.add_answer_indices()
 
         # Push to the Hub
         self.push_to_hub()
@@ -117,6 +119,23 @@ class ScandiQADataset:
         self.mkqa.dropna(subset=["title_en", "context_en"], inplace=True)
 
         return self
+
+    def translate_contexts(self):
+        """Translates the English contexts of the MKQA dataset."""
+
+        # Set up progress bar
+        desc = "Translating contexts"
+        with tqdm(self.mkqa.iterrows(), total=len(self.mkqa), desc=desc) as pbar:
+
+            # Translate all the English contexts
+            records = [self._translate_context(example) for _, example in pbar]
+
+            # Convert to a Pandas DataFrame and replace MKQA dataset
+            self.mkqa = pd.DataFrame.from_records(records)
+
+    def add_answer_indices(self):
+        """Adds the start indices of the answers to the MKQA dataset."""
+        raise NotImplementedError  # TODO
 
     def push_to_hub(self):
         """Pushes the dataset to the Hugging Face Hub."""
@@ -400,7 +419,9 @@ class ScandiQADataset:
                 The example with the translated context.
         """
         # Translate the English context
-        example.context = self.translator(example.context_en, target_lang=self.language)
+        example["context"] = self.translator(
+            example.context_en, target_lang=self.language
+        )
 
         # If the example does not have an answer then we simply use the translated
         # context as the new context
@@ -442,8 +463,8 @@ class ScandiQADataset:
             # If none of the answer candidates appear in the translated context
             # then we discard the example by setting the context to None
             if not has_answer:
-                example.context = None
-                example.answer = None
+                example["context"] = None
+                example["answer"] = None
 
             # Otherwise, we set the answer candidate appearing in the translated
             # context as the answer, and the translated context as the context
@@ -461,7 +482,9 @@ class ScandiQADataset:
 
                 # Use the index to extract the answer with correct casing from the
                 # context
-                example.answer = example.context[answer_idx : answer_idx + len(answer)]
+                example["answer"] = example.context[
+                    answer_idx : answer_idx + len(answer)
+                ]
 
             # Return the example as a dictionary
             return example.to_dict()
