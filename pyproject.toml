@@ -51,3 +51,6 @@ exclude = '''
 | build
 )/
 '''
+
+[tool.isort]
+profile = "black"
