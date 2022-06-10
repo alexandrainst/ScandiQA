@@ -1,10 +1,13 @@
 """DeepL translation wrapper."""
 
 import os
+import re
 from typing import Optional
 
 import requests
+from blingfire import text_to_sentences
 from dotenv import load_dotenv
+from requests.exceptions import JSONDecodeError
 
 # Load environment variables
 load_dotenv()
@@ -37,7 +40,7 @@ class DeepLTranslator:
         self.api_key = api_key
         self.progress_bar = progress_bar
 
-    def __call__(self, text: str, target_lang: str) -> str:
+    def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
 
         Args:
@@ -45,24 +48,84 @@ class DeepLTranslator:
                 The text to translate.
             target_lang (str):
                 The language to translate the text into.
+            is_sentence (bool, optional):
+                Whether the text is a sentence. Defaults to False.
 
         Returns:
             str:
                 The translated text.
         """
         # Set up the DeepL API parameters
-        params = dict(
-            text=[text],
-            auth_key=self.api_key,
-            target_lang=target_lang,
-            split_sentences=0,
-        )
+        params = dict(text=text, auth_key=self.api_key, target_lang=target_lang)
 
         # Call the DeepL API to get the translations
-        response = requests.get(self.base_url, params=params)  # type: ignore
+        response = requests.post(self.base_url, params=params)  # type: ignore
 
-        # Extract the translation
-        translated = response.json()["translations"][0]["text"]
+        # Split the text up if it is too long (HTTP error code 414)
+        if response.status_code == 414:
 
-        # Return the translation
-        return translated
+            # If there are newlines in the text then split by newlines
+            if "\n" in text:
+
+                # Remove duplicate newlines
+                text = re.sub(r"\n+", "\n", text)
+
+                # Split by newlines
+                texts = text.split("\n")
+
+                # Translate each text
+                translations = [
+                    self(text=text, target_lang=target_lang) for text in texts
+                ]
+
+                # Join the translations together with newlines
+                return "\n".join(translations)
+
+            # Otherwise, we use the blingfire library to split the text into sentences
+            elif not is_sentence:
+
+                # Split the text into sentences
+                texts = text_to_sentences(text).split("\n")
+
+                # Translate each text
+                translations = [
+                    self(text=text, target_lang=target_lang, is_sentence=True)
+                    for text in texts
+                ]
+
+                # Join the translations together with newlines
+                return " ".join(translations)
+
+            # Otherwise, we simply split the text into chunks of 500 characters
+            else:
+
+                # Split the text into chunks of 500 characters
+                texts = [text[i : i + 500] for i in range(0, len(text) - 500, 500)]
+
+                # Translate each text
+                translations = [
+                    self(text=text, target_lang=target_lang, is_sentence=True)
+                    for text in texts
+                ]
+
+                # Join the translations together with newlines
+                return "".join(translations)
+
+        # Otherwise, if the status code is not 200 then raise an error
+        elif response.status_code != 200:
+
+            raise RuntimeError(
+                f"DeepL API returned status code {response.status_code}."
+            )
+
+        # Otheriwse, we can return the translation
+        else:
+
+            # Extract the JSON object from the response
+            response_json = response.json()
+
+            # Extract the translation
+            translated = response_json["translations"][0]["text"]
+
+            # Return the translation
+            return translated
