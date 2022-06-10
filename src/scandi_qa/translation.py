@@ -64,14 +64,20 @@ class DeepLTranslator:
         # Split the text up if it is too long (HTTP error code 414)
         if response.status_code == 414:
 
-            # If there are newlines in the text then split by newlines
+            # If there are newlines in the text then split by the middle newline
             if "\n" in text:
 
                 # Remove duplicate newlines
                 text = re.sub(r"\n+", "\n", text)
 
-                # Split by newlines
-                texts = text.split("\n")
+                # Locate the indices of all the newlines
+                newline_indices = [i for i, c in enumerate(text) if c == "\n"]
+
+                # Choose the median index
+                median_index = newline_indices[len(newline_indices) // 2]
+
+                # Split the text by the middle newline
+                texts = [text[:median_index], text[median_index + 1 :]]
 
                 # Translate each text
                 with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
