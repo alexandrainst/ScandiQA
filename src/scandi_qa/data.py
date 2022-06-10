@@ -60,7 +60,7 @@ class ScandiQADataset:
         self.translator = DeepLTranslator()
 
         # TEMP
-        # self.nq = self.nq.select(range(100))
+        self.nq = self.nq.select(range(200))
 
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
@@ -135,7 +135,16 @@ class ScandiQADataset:
 
     def add_answer_indices(self):
         """Adds the start indices of the answers to the MKQA dataset."""
-        raise NotImplementedError  # TODO
+
+        # Set up progress bar
+        desc = "Adding answer indices"
+        with tqdm(self.mkqa.iterrows(), total=len(self.mkqa), desc=desc) as pbar:
+
+            # Translate all the English contexts
+            records = [self._add_answer_index(example) for _, example in pbar]
+
+            # Convert to a Pandas DataFrame and replace MKQA dataset
+            self.mkqa = pd.DataFrame.from_records(records)
 
     def push_to_hub(self):
         """Pushes the dataset to the Hugging Face Hub."""
@@ -428,73 +437,88 @@ class ScandiQADataset:
         if example.answer is None:
             return example.to_dict()
 
-        # If the example has an answer then we extract answer candidates from the
-        # MKQA answers. If none of the answer candidates appear in the translated
-        # context then we discard the example by setting the context to None.
-        # Otherwise, we set the answer candidate appearing in the translated context
-        # as the answer, and the translated context as the context.
+        # Create singleton list of answer candidates
+        answer_candidates = [example.answer]
+
+        # If the answer looks like an integer, then add the corresponding
+        # written form of the integer to the answer candidates
+        if re.match(r"^[0-9]+(\.0)?$", example.answer) is not None:
+
+            # Extract the integer
+            integer = int(example.answer)
+
+            # Add the written form of the integer to the answer candidates
+            if self.language == "da":
+                answer_candidates.extend(DANISH_NUMERALS[integer])
+            elif self.language == "sv":
+                answer_candidates.extend(SWEDISH_NUMERALS[integer])
+            else:
+                answer_candidates.extend(NORWEGIAN_NUMERALS[integer])
+
+        # Create variable storing whether any of the answer candidates appear
+        # in the translated context
+        has_answer = any(
+            candidate.lower() in example.context.lower()
+            for candidate in answer_candidates
+        )
+
+        # If none of the answer candidates appear in the translated context
+        # then we discard the example by setting the context to None
+        if not has_answer:
+            example["context"] = None
+            example["answer"] = None
+
+        # Otherwise, we set the answer candidate appearing in the translated
+        # context as the answer, and the translated context as the context
         else:
 
-            # Create singleton list of answer candidates
-            answer_candidates = [example.answer]
-
-            # If the answer looks like an integer, then add the corresponding
-            # written form of the integer to the answer candidates
-            if re.match(r"^[0-9]+(\.0)?$", example.answer) is not None:
-
-                # Extract the integer
-                integer = int(example.answer)
-
-                # Add the written form of the integer to the answer candidates
-                if self.language == "da":
-                    answer_candidates.extend(DANISH_NUMERALS[integer])
-                elif self.language == "sv":
-                    answer_candidates.extend(SWEDISH_NUMERALS[integer])
-                else:
-                    answer_candidates.extend(NORWEGIAN_NUMERALS[integer])
-
-            # Create variable storing whether any of the answer candidates appear
-            # in the translated context
-            has_answer = any(
-                candidate.lower() in example.context.lower()
+            # Extract the answer candidate appearing in the translated context
+            answer = next(
+                candidate
                 for candidate in answer_candidates
+                if candidate.lower() in example.context.lower()
             )
 
-            # If none of the answer candidates appear in the translated context
-            # then we discard the example by setting the context to None
-            if not has_answer:
-                example["context"] = None
-                example["answer"] = None
+            # Get the index at which the answer appears in the context
+            answer_idx = example.context.lower().index(answer.lower())
 
-            # Otherwise, we set the answer candidate appearing in the translated
-            # context as the answer, and the translated context as the context
-            else:
+            # Use the index to extract the answer with correct casing from the
+            # context
+            example["answer"] = example.context[answer_idx : answer_idx + len(answer)]
 
-                # Extract the answer candidate appearing in the translated context
-                answer = next(
-                    candidate
-                    for candidate in answer_candidates
-                    if candidate.lower() in example.context.lower()
-                )
+        # Return the example as a dictionary
+        return example.to_dict()
 
-                # Get the index at which the answer appears in the context
-                answer_idx = example.context.lower().index(answer.lower())
+    def _add_answer_index(self, example: pd.Series) -> dict:
+        """Adds the answer starting index to an example.
 
-                # Use the index to extract the answer with correct casing from the
-                # context
-                example["answer"] = example.context[
-                    answer_idx : answer_idx + len(answer)
-                ]
+        Args:
+            example (pd.Series):
+                The MKQA example with a translated context.
 
-            # Return the example as a dictionary
+        Returns:
+            dict:
+                The example with an answer starting index.
+        """
+        # Start by setting the answer starting index to -1, which is the default until
+        # we find an alternative index
+        example["answer_start"] = -1
+
+        # If the example does not have an answer, or if the answer does not appear in
+        # the context, then we simply return the example
+        if example.answer is None or example.answer not in example.context:
+            return example.to_dict()
+
+        # Otherwise, we use the first index of the answer in the context as the answer
+        # starting index
+        else:
+            example["answer_start"] = example.context.index(example.answer)
             return example.to_dict()
 
 
 if __name__ == "__main__":
     # cache_dir = "/mnt/data_4tb/dan/.cache/huggingface"
-    # languages = ["da", "sv", "no"]
-
-    languages = ["da"]
+    languages = ["da"]  # ["da", "sv", "no"]
     for language in languages:
         dataset = ScandiQADataset(language=language)
         dataset.build()
