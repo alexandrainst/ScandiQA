@@ -298,6 +298,14 @@ css = ["tinycss2 (>=1.1.0)"]
 dev = ["pip-tools (==6.5.1)", "pytest (==7.1.1)", "flake8 (==4.0.1)", "tox (==3.24.5)", "sphinx (==4.3.2)", "twine (==4.0.0)", "wheel (==0.37.1)", "hashin (==0.17.0)", "black (==22.3.0)", "mypy (==0.942)"]
 
 [[package]]
+name = "blingfire"
+version = "0.1.8"
+description = "Python wrapper of lightning fast Finite State Machine based NLP library."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "certifi"
 version = "2022.5.18.1"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -2718,7 +2726,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3df0af976dcb595ccdb3cd90d99b92a2a6ccfeffad5212c50fefe6b27cf6cdba"
+content-hash = "ef3be9ccb4af32b962110640af26d0a0f055413e88cb0e5761c7a3929c4a8a4c"
 
 [metadata.files]
 aiohttp = [
@@ -2936,6 +2944,10 @@ black = [
 bleach = [
     {file = "bleach-5.0.0-py3-none-any.whl", hash = "sha256:08a1fe86d253b5c88c92cc3d810fd8048a16d15762e1e5b74d502256e5926aa1"},
     {file = "bleach-5.0.0.tar.gz", hash = "sha256:c6d6cc054bdc9c83b48b8083e236e5f00f238428666d2ce2e083eaa5fd568565"},
+]
+blingfire = [
+    {file = "blingfire-0.1.8-py3-none-any.whl", hash = "sha256:9534102bb81f69bc175e2373ef46d8eb0a2a43da052442c7708bfcef171899df"},
+    {file = "blingfire-0.1.8.tar.gz", hash = "sha256:fac20b4c1bb6519a32716a8bf64f0fcb7b6ea7631ad1ffab29f14df85c5b4d6a"},
 ]
 certifi = [
     {file = "certifi-2022.5.18.1-py3-none-any.whl", hash = "sha256:f1d53542ee8cbedbe2118b5686372fb33c297fcd6379b050cca0ef13a597382a"},

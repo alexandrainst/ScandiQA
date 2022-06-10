@@ -27,6 +27,7 @@ sentence-transformers = "^2.2.0"
 python-dotenv = "^0.20.0"
 requests = "^2.28.0"
 types-requests = "^2.27.30"
+blingfire = "^0.1.8"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
