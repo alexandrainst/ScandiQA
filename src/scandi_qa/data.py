@@ -60,7 +60,7 @@ class ScandiQADataset:
         self.translator = DeepLTranslator()
 
         # TEMP
-        # self.nq = self.nq.select(range(500))
+        # self.nq = self.nq.select(range(1000))
 
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
@@ -448,7 +448,7 @@ class ScandiQADataset:
         if re.match(r"^[0-9]+(\.0)?$", example.answer) is not None:
 
             # Extract the integer
-            integer = int(example.answer)
+            integer = int(re.sub(r"\.0", "", example.answer))
 
             # Get the written form of the integer if it is between 0 and 20, inclusive
             if integer >= 0 and integer <= 20:
