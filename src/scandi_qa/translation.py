@@ -7,7 +7,6 @@ from typing import Optional
 import requests
 from blingfire import text_to_sentences
 from dotenv import load_dotenv
-from requests.exceptions import JSONDecodeError
 
 # Load environment variables
 load_dotenv()
