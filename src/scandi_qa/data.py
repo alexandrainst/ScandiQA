@@ -133,6 +133,9 @@ class ScandiQADataset:
             # Convert to a Pandas DataFrame and replace MKQA dataset
             self.mkqa = pd.DataFrame.from_records(records)
 
+            # Remove the rows with missing contexts and/or answers
+            self.mkqa.dropna(subset=["answer", "context"], inplace=True)
+
     def add_answer_indices(self):
         """Adds the start indices of the answers to the MKQA dataset."""
 
