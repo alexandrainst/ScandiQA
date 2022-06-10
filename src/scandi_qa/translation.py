@@ -7,6 +7,7 @@ from typing import Optional
 import requests
 from blingfire import text_to_sentences
 from dotenv import load_dotenv
+from tqdm.auto import tqdm
 
 # Load environment variables
 load_dotenv()
@@ -73,9 +74,10 @@ class DeepLTranslator:
                 texts = text.split("\n")
 
                 # Translate each text
-                translations = [
-                    self(text=text, target_lang=target_lang) for text in texts
-                ]
+                with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
+                    translations = [
+                        self(text=text, target_lang=target_lang) for text in pbar
+                    ]
 
                 # Join the translations together with newlines
                 return "\n".join(translations)
@@ -87,10 +89,11 @@ class DeepLTranslator:
                 texts = text_to_sentences(text).split("\n")
 
                 # Translate each text
-                translations = [
-                    self(text=text, target_lang=target_lang, is_sentence=True)
-                    for text in texts
-                ]
+                with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
+                    translations = [
+                        self(text=text, target_lang=target_lang, is_sentence=True)
+                        for text in pbar
+                    ]
 
                 # Join the translations together with newlines
                 return " ".join(translations)
@@ -102,10 +105,11 @@ class DeepLTranslator:
                 texts = [text[i : i + 500] for i in range(0, len(text) - 500, 500)]
 
                 # Translate each text
-                translations = [
-                    self(text=text, target_lang=target_lang, is_sentence=True)
-                    for text in texts
-                ]
+                with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
+                    translations = [
+                        self(text=text, target_lang=target_lang, is_sentence=True)
+                        for text in pbar
+                    ]
 
                 # Join the translations together with newlines
                 return "".join(translations)
