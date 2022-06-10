@@ -60,7 +60,7 @@ class ScandiQADataset:
         self.translator = DeepLTranslator()
 
         # TEMP
-        self.nq = self.nq.select(range(200))
+        # self.nq = self.nq.select(range(500))
 
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
@@ -447,13 +447,16 @@ class ScandiQADataset:
             # Extract the integer
             integer = int(example.answer)
 
-            # Add the written form of the integer to the answer candidates
-            if self.language == "da":
-                answer_candidates.extend(DANISH_NUMERALS[integer])
-            elif self.language == "sv":
-                answer_candidates.extend(SWEDISH_NUMERALS[integer])
-            else:
-                answer_candidates.extend(NORWEGIAN_NUMERALS[integer])
+            # Get the written form of the integer if it is between 0 and 20, inclusive
+            if integer >= 0 and integer <= 20:
+
+                # Add the written form of the integer to the answer candidates
+                if self.language == "da":
+                    answer_candidates.extend(DANISH_NUMERALS[integer])
+                elif self.language == "sv":
+                    answer_candidates.extend(SWEDISH_NUMERALS[integer])
+                else:
+                    answer_candidates.extend(NORWEGIAN_NUMERALS[integer])
 
         # Create variable storing whether any of the answer candidates appear
         # in the translated context
