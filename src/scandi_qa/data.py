@@ -521,7 +521,7 @@ class ScandiQADataset:
         # first index of the answer in the context as the answer starting index
         for new_col_name, answer, context in answer_contexts:
             if answer is not None and answer in context:
-                example[new_col_name] = example.context.index(example.answer)
+                example[new_col_name] = context.index(answer)
 
         return example.to_dict()
 
