@@ -526,7 +526,7 @@ class ScandiQADataset:
         # If the English answer did not appear in the English context, then check if
         # the answer appears in the English context instead, and use that as the
         # English starting index
-        if example.answer_en == -1 and example.answer_en in example.context:
+        if example.answer_start_en == -1 and example.answer_en in example.context:
             example["answer_start_en"] = example.context.index(example.answer_en)
 
         return example.to_dict()
