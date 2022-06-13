@@ -509,17 +509,21 @@ class ScandiQADataset:
         # Start by setting the answer starting index to -1, which is the default until
         # we find an alternative index
         example["answer_start"] = -1
+        example["answer_start_en"] = -1
 
-        # If the example does not have an answer, or if the answer does not appear in
-        # the context, then we simply return the example
-        if example.answer is None or example.answer not in example.context:
-            return example.to_dict()
+        # Create variable containing the contexts and answers
+        answer_contexts = [
+            ("answer_start", example.answer, example.context),
+            ("answer_start_en", example.answer_en, example.context_en),
+        ]
 
-        # Otherwise, we use the first index of the answer in the context as the answer
-        # starting index
-        else:
-            example["answer_start"] = example.context.index(example.answer)
-            return example.to_dict()
+        # If there is an answer and it appears in the context, then we use the
+        # first index of the answer in the context as the answer starting index
+        for new_col_name, answer, context in answer_contexts:
+            if answer is not None and answer in context:
+                example[new_col_name] = example.context.index(example.answer)
+
+        return example.to_dict()
 
 
 if __name__ == "__main__":
