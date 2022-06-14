@@ -60,7 +60,7 @@ class ScandiQADataset:
         self.translator = DeepLTranslator()
 
         # TEMP
-        self.nq = self.nq.select(range(1000))
+        self.nq = self.nq.select(range(100))
 
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
