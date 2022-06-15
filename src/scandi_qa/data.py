@@ -59,9 +59,6 @@ class ScandiQADataset:
         self.sbert = SentenceTransformer("all-mpnet-base-v2")
         self.translator = DeepLTranslator()
 
-        # TEMP
-        self.nq = self.nq.select(range(100))
-
     def build(self):
         """Builds the dataset and pushes it to the Hugging Face Hub."""
 
@@ -535,7 +532,7 @@ class ScandiQADataset:
 
 if __name__ == "__main__":
     # cache_dir = "/mnt/data_4tb/dan/.cache/huggingface"
-    languages = ["da"]  # ["da", "sv", "no"]
+    languages = ["da"]  # ["da", "sv"]
     for language in languages:
         dataset = ScandiQADataset(language=language)
         dataset.build()
