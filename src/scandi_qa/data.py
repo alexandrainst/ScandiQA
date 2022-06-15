@@ -352,7 +352,7 @@ class ScandiQADataset:
             if re.match(r"^[0-9]+(\.0)?$", answer_en) is not None:
 
                 # Extract the integer
-                integer = int(answer_en)
+                integer = int(re.sub(r"\.0", "", answer_en))
 
                 # Add the written form of the integer to the answer candidates
                 if integer >= 0 and integer <= 20:
