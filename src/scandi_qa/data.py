@@ -355,7 +355,8 @@ class ScandiQADataset:
                 integer = int(answer_en)
 
                 # Add the written form of the integer to the answer candidates
-                answer_candidates.extend(ENGLISH_NUMERALS[integer])
+                if integer >= 0 and integer <= 20:
+                    answer_candidates.extend(ENGLISH_NUMERALS[integer])
 
             # Extract all the <p>, <span> and <table> tags in the HTML context which
             # contain more than 10 characters and which contain a candidate answer
