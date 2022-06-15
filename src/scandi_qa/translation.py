@@ -28,7 +28,7 @@ class DeepLTranslator:
             True.
     """
 
-    base_url: str = "https://api-free.deepl.com/v2/translate"
+    base_url: str = "https://api.deepl.com/v2/translate"
 
     def __init__(self, api_key: Optional[str] = None, progress_bar: bool = True):
 
