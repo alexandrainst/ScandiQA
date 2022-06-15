@@ -165,6 +165,17 @@ six = "*"
 test = ["astroid", "pytest"]
 
 [[package]]
+name = "astunparse"
+version = "1.6.3"
+description = "An AST unparser for Python"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+six = ">=1.6.1,<2.0"
+
+[[package]]
 name = "async-timeout"
 version = "4.0.2"
 description = "Timeout context manager for asyncio programs"
@@ -1699,6 +1710,23 @@ optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,>=2.7"
 
 [[package]]
+name = "pdoc"
+version = "12.0.2"
+description = "API Documentation for Python Projects"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+astunparse = {version = "*", markers = "python_version < \"3.9\""}
+Jinja2 = ">=2.11.0"
+MarkupSafe = "*"
+pygments = ">=2.12.0"
+
+[package.extras]
+dev = ["flake8", "hypothesis", "mypy", "pytest", "pytest-cov", "pytest-timeout", "tox"]
+
+[[package]]
 name = "pdoc3"
 version = "0.10.0"
 description = "Auto-generate API documentation for Python projects."
@@ -2726,7 +2754,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "061d1bb7187a343b5f302f89a31714a307d7fb589d38659332a2185d33943dff"
+content-hash = "6a08504a9b0a4d63be3facf07b64e17ccb01905e6b411365a2a4ebab62fce1e1"
 
 [metadata.files]
 aiohttp = [
@@ -2883,6 +2911,10 @@ argon2-cffi-bindings = [
 asttokens = [
     {file = "asttokens-2.0.5-py2.py3-none-any.whl", hash = "sha256:0844691e88552595a6f4a4281a9f7f79b8dd45ca4ccea82e5e05b4bbdb76705c"},
     {file = "asttokens-2.0.5.tar.gz", hash = "sha256:9a54c114f02c7a9480d56550932546a3f1fe71d8a02f1bc7ccd0ee3ee35cf4d5"},
+]
+astunparse = [
+    {file = "astunparse-1.6.3-py2.py3-none-any.whl", hash = "sha256:c2652417f2c8b5bb325c885ae329bdf3f86424075c4fd1a128674bc6fba4b8e8"},
+    {file = "astunparse-1.6.3.tar.gz", hash = "sha256:5ad93a8456f0d084c3456d059fd9a92cce667963232cbf763eac3bc5b7940872"},
 ]
 async-timeout = [
     {file = "async-timeout-4.0.2.tar.gz", hash = "sha256:2163e1640ddb52b7a8c80d0a67a08587e5d245cc9c553a74a847056bc2976b15"},
@@ -3690,7 +3722,6 @@ orjson = [
     {file = "orjson-3.7.1-cp310-cp310-macosx_10_7_x86_64.whl", hash = "sha256:4175929ca77338e6a57ff232c0e80443411ac0b489bfff755988ae70e3f62a97"},
     {file = "orjson-3.7.1-cp310-cp310-macosx_10_9_x86_64.macosx_11_0_arm64.macosx_10_9_universal2.whl", hash = "sha256:349514d69ce089b0e39014345907318ddba8ceca32a187635601c391c36ecdd6"},
     {file = "orjson-3.7.1-cp310-cp310-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:d4a380c164f8c40660ce8f96791695aa74d32a2a45d4038a2a4826d9ec2c61f6"},
-    {file = "orjson-3.7.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8457e05994081b2c586f84ab12fb3427129590e3b451498dde729b771b50c068"},
     {file = "orjson-3.7.1-cp310-cp310-manylinux_2_24_aarch64.whl", hash = "sha256:26c64da280c9e097081d12047f13b4adba776b19885da5e488c093d4a1461056"},
     {file = "orjson-3.7.1-cp310-cp310-manylinux_2_28_x86_64.whl", hash = "sha256:3a1e2dfa7ba8adb7511f3560e968ff2a66e7d0cd2f454219a0ab778c3c2e1a5c"},
     {file = "orjson-3.7.1-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:8d877467096dc117500a5ed38238085a81518252db3991793a8468ca97445e6c"},
@@ -3759,6 +3790,10 @@ parso = [
 pathspec = [
     {file = "pathspec-0.9.0-py2.py3-none-any.whl", hash = "sha256:7d15c4ddb0b5c802d161efc417ec1a2558ea2653c2e8ad9c19098201dc1c993a"},
     {file = "pathspec-0.9.0.tar.gz", hash = "sha256:e564499435a2673d586f6b2130bb5b95f04a3ba06f81b8f895b651a3c76aabb1"},
+]
+pdoc = [
+    {file = "pdoc-12.0.2-py3-none-any.whl", hash = "sha256:761a096b4dbc586c80d6b37baebf21ef467f22d6ea0532c3d5834abdb27c9862"},
+    {file = "pdoc-12.0.2.tar.gz", hash = "sha256:c63dc9050ec24b6baed6864a7d460814c620d3adbaee51c04b74eaa174b97dc6"},
 ]
 pdoc3 = [
     {file = "pdoc3-0.10.0-py3-none-any.whl", hash = "sha256:ba45d1ada1bd987427d2bf5cdec30b2631a3ff5fb01f6d0e77648a572ce6028b"},
