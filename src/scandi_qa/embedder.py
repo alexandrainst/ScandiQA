@@ -36,41 +36,32 @@ class Embedder:
         """
         return self.sbert.encode(text, convert_to_numpy=True)
 
-    def similarity(
-        self, text1: str, text2: Union[List[str], str]
-    ) -> Union[float, List[float]]:
+    def similarities(self, doc: str, other_docs: List[str]) -> List[float]:
         """Compute the cosine similarity between two texts.
 
         Args:
-            text1 (str):
-                The first text.
-            text2 (str or list of str):
-                The second text, which can also be a list of strings. If the latter
-                then the cosine similarity is computed between the embeddings of
-                the first text and all the embeddings of the texts in the list
+            doc (str):
+                The document to compare to other documents.
+            other_docs (list of str):
+                The list of documents to compare to `doc`.
 
         Returns:
-            float or list of float:
+            list of float:
                 The cosine similarity between the two texts, or a list of cosine
                 similarities if the second text is a list of strings.
         """
-        # Ensure that `text2` is a list
-        if isinstance(text2, str):
-            text2 = [text2]
-
         # Embed the texts
-        text1_embedding = self.embed(text1)
-        text2_embeddings = [self.embed(doc) for doc in text2]
+        doc_embedding = self.embed(doc)
+        other_docs_embeddings = [self.embed(doc) for doc in other_docs]
 
         # Normalise the embeddings
-        text1_embedding = text1_embedding / np.linalg.norm(text1_embedding)
-        text2_embeddings = [emb / np.linalg.norm(emb) for emb in text2_embeddings]
+        doc_embedding = doc_embedding / np.linalg.norm(doc_embedding)
+        other_docs_embeddings = [
+            emb / np.linalg.norm(emb) for emb in other_docs_embeddings
+        ]
 
         # Compute the cosine similarity
-        similarities = [np.dot(text1_embedding, emb) for emb in text2_embeddings]
+        similarities = [np.dot(doc_embedding, emb) for emb in other_docs_embeddings]
 
-        # If `text2` was a single string then return the single similarity
-        if len(similarities) == 1:
-            return similarities[0]
-        else:
-            return similarities
+        # If the second string was a single string then return the single similarity
+        return similarities

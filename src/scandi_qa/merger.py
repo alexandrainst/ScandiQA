@@ -204,7 +204,7 @@ class Merger:
             # the question
             else:
                 # Compute the similarity between the question and all the paragraphs
-                similarities = self.embedder.similarity(question, context_candidates)
+                similarities = self.embedder.similarities(question, context_candidates)
 
                 # Get the paragraph with the largest similarity
                 best_idx = similarities.index(max(similarities))  # type: ignore
@@ -251,7 +251,7 @@ class Merger:
 
                 # Compute the similarity between the question and all the candidate
                 # contexts
-                similarities = self.embedder.similarity(question, context_candidates)
+                similarities = self.embedder.similarities(question, context_candidates)
 
                 # Get the candidate context with the largest similarity
                 best_idx = similarities.index(max(similarities))  # type: ignore
