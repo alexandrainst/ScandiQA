@@ -6,7 +6,7 @@ from typing import Optional
 
 import requests
 from blingfire import text_to_sentences
-from dataset import load_dataset
+from datasets import load_dataset
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
 
