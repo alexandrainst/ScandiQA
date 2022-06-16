@@ -66,13 +66,13 @@ class ScandiQADataset:
         self.add_english_contexts()
 
         # Translate the English contexts
-        self.translate_contexts()
+        # self.translate_contexts()
 
         # Compute start indices of the answers
-        self.add_answer_indices()
+        # self.add_answer_indices()
 
         # Push to the Hub
-        self.push_to_hub()
+        # self.push_to_hub()
 
         return self
 
@@ -111,6 +111,8 @@ class ScandiQADataset:
         # Add the titles and contexts as columns in the MKQA dataset
         self.mkqa["title_en"] = self.mkqa.index.map(titles)
         self.mkqa["context_en"] = self.mkqa.index.map(contexts)
+
+        breakpoint()
 
         # Remove the rows with missing contexts
         self.mkqa.dropna(subset=["title_en", "context_en"], inplace=True)
