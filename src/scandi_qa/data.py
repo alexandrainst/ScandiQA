@@ -343,7 +343,9 @@ class ScandiQADataset:
                 context_en = context_candidates[similarities.index(max(similarities))]
 
         # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
-        # extract all the answer candidates from the English version of the MKQA answer
+        # extract all the answer candidates from the English version of the MKQA
+        # answer, and use the <p>, <span> or <table> tag that contains one of the
+        # candidate answers and has the largest cosine similarity with the question
         else:
 
             # Create singleton list of answer candidates
