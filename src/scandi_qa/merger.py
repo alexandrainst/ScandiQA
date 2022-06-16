@@ -166,6 +166,7 @@ class Merger:
         # Define variable on whether the MKQA dataset contains an answer for the
         # example
         answer_en = self.mkqa.loc[example_id, "answer_en"]
+        answer = self.mkqa.loc[example_id, "answer"]
         mkqa_has_answer = answer_en is not None
 
         # If the long answer exists then use this as the context
@@ -269,7 +270,15 @@ class Merger:
                 answer=answer_en, context=context_en, language=self.language
             )
 
-            # If the answer was not found then we set the answer to the empty string
+            # If no answer was found then try searching for the language-specific
+            # answer in the English context instead
+            if answer_dict is None:
+                answer_dict = extract_answer(
+                    answer=answer, context=context_en, language=self.language
+                )
+
+            # If the answer was still not found then we set the answer to the empty
+            # string
             if answer_dict is None:
                 answer_en = ""
                 answer_start_en = -1
