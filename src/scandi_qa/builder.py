@@ -5,7 +5,6 @@ from datasets import Dataset
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer
-from .embedder import Embedder
 from .merger import Merger
 from .translation import DeepLTranslator
 
@@ -153,11 +152,3 @@ class QADatasetBuilder:
 
         # Return the example as a dictionary
         return example.to_dict()
-
-
-if __name__ == "__main__":
-    # cache_dir = "/mnt/data_4tb/dan/.cache/huggingface"
-    languages = ["da"]  # ["da", "sv"]
-    for language in languages:
-        builder = QADatasetBuilder(language=language)
-        dataset = builder.build()

@@ -1,7 +1,5 @@
 """Class that filters the Natural Questions dataset."""
 
-from typing import List
-
 import pandas as pd
 from bs4 import BeautifulSoup
 from datasets import load_dataset
