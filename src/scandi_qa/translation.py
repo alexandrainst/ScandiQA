@@ -6,6 +6,7 @@ from typing import Optional
 
 import requests
 from blingfire import text_to_sentences
+from dataset import load_dataset
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
 
@@ -39,6 +40,16 @@ class DeepLTranslator:
         # Store the variables
         self.api_key = api_key
         self.progress_bar = progress_bar
+
+        # TEMP: Load in a previously compiled dataset, to use as cache
+        self.cache = {
+            row.context_en: row.context
+            for row in load_dataset(
+                "saattrupdan/mkqa_da", split="train", use_auth_token=True
+            )
+        }
+
+        breakpoint()
 
     def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.

@@ -53,7 +53,7 @@ class QADatasetBuilder:
         df = self.merger.merge()
 
         # Translate the English contexts
-        # df = self.translate_contexts(df)
+        df = self.translate_contexts(df)
 
         # Push to the Hub
         self.push_to_hub(df)

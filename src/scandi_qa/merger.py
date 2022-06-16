@@ -121,8 +121,6 @@ class Merger:
         dataset["answer_en"] = dataset.index.map(answer_ens)
         dataset["answer_start_en"] = dataset.index.map(answer_start_ens)
 
-        breakpoint()
-
         # Remove the rows with missing contexts
         dataset.dropna(subset="context_en", inplace=True)
 
