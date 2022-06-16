@@ -268,10 +268,10 @@ class ScandiQADataset:
             Example:
                 The processed example, with keys 'example_id', 'title_en' and
                 'context_en'. The 'context_en' feature is set to None if either there
-                are no <p>, <span> or <table> tags in the HTML, or that the given
-                example does not have a long answer in NQ, has an answer in MKQA, but
-                the answer, or variants thereof, does not appear in any <p>, <span> or
-                <table> tags.
+                are no <p>, <span> or <table> tags with more than 200 characters in the
+                HTML, or that the given example does not have a long answer in NQ, has
+                an answer in MKQA, but the answer, or variants thereof, does not appear
+                in any <p>, <span> or <table> tags.
         """
         # Extract the example ID
         example_id = int(example["id"])
