@@ -66,6 +66,10 @@ class DeepLTranslator:
             str:
                 The translated text.
         """
+        # If the text has previously been translated then use the cached translation
+        if text in self.cache:
+            return self.cache[text]
+
         # Set up the DeepL API parameters
         params = dict(text=text, auth_key=self.api_key, target_lang=target_lang)
 
