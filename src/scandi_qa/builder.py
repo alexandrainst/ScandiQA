@@ -91,7 +91,7 @@ class QADatasetBuilder:
             df (pd.DataFrame):
                 The dataset to push to the Hugging Face Hub.
         """
-        dataset = Dataset.from_pandas(df)
+        dataset = Dataset.from_pandas(df, preserve_index=True)
         dataset.push_to_hub(f"scandiqa-{self.language}")
         return self
 
