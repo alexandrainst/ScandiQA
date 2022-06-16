@@ -207,7 +207,8 @@ class Merger:
                 similarities = self.embedder.similarity(question, context_candidates)
 
                 # Get the paragraph with the largest similarity
-                context_en = context_candidates[similarities.index(max(similarities))]  # type: ignore
+                best_idx = similarities.index(max(similarities))  # type: ignore
+                context_en = context_candidates[best_idx]
 
         # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
         # extract all the answer candidates from the English version of the MKQA
@@ -253,7 +254,8 @@ class Merger:
                 similarities = self.embedder.similarity(question, context_candidates)
 
                 # Get the candidate context with the largest similarity
-                context_en = context_candidates[similarities.index(max(similarities))]  # type: ignore
+                best_idx = similarities.index(max(similarities))  # type: ignore
+                context_en = context_candidates[best_idx]
 
         # Clean the context if it exists
         if context_en is not None:
