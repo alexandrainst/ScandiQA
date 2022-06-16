@@ -317,14 +317,14 @@ class ScandiQADataset:
             question_emb = self.sbert.encode(question)
 
             # Extract all the paragraphs from the HTML context. These are all the <p>,
-            # <span> and <table> tags in the HTML context which contain more than 10
+            # <span> and <table> tags in the HTML context which contain more than 200
             # characters
             soup = BeautifulSoup(html_bytes, "html.parser")
             context_candidates = [
                 tag.get_text().strip("\n")
                 for tag_name in ["p", "span", "table"]
                 for tag in soup.find_all(tag_name)
-                if len(tag.get_text()) > 10
+                if len(tag.get_text()) > 200
             ]
 
             # If no candidate contexts were found then we discard the example by
