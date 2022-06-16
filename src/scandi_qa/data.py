@@ -342,8 +342,8 @@ class ScandiQADataset:
                 # Get the paragraph with the largest similarity
                 context_en = context_candidates[similarities.index(max(similarities))]
 
-        # Otherwise, we extract all the answer candidates from the English version of
-        # the MKQA answer
+        # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
+        # extract all the answer candidates from the English version of the MKQA answer
         else:
 
             # Create singleton list of answer candidates
