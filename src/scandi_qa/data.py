@@ -363,13 +363,13 @@ class ScandiQADataset:
                     answer_candidates.extend(ENGLISH_NUMERALS[integer])
 
             # Extract all the <p>, <span> and <table> tags in the HTML context which
-            # contain more than 100 characters and which contain a candidate answer
+            # contain more than 200 characters and which contain a candidate answer
             soup = BeautifulSoup(html_bytes, "html.parser")
             context_candidates = [
                 tag.get_text().strip("\n")
                 for tag_name in ["p", "span", "table"]
                 for tag in soup.find_all(tag_name)
-                if len(tag.get_text()) > 100
+                if len(tag.get_text()) > 200
                 and any(
                     candidate.lower() in tag.get_text().lower()
                     for candidate in answer_candidates
