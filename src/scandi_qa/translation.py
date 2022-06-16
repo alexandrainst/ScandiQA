@@ -49,8 +49,6 @@ class DeepLTranslator:
             )
         }
 
-        breakpoint()
-
     def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
 
@@ -69,6 +67,8 @@ class DeepLTranslator:
         # If the text has previously been translated then use the cached translation
         if text in self.cache:
             return self.cache[text]
+        else:
+            breakpoint()
 
         # Set up the DeepL API parameters
         params = dict(text=text, auth_key=self.api_key, target_lang=target_lang)
