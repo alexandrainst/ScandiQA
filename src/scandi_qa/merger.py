@@ -41,9 +41,6 @@ class Merger:
         )
         self.embedder = Embedder()
 
-        # TEMP
-        self.nq = self.nq.select(range(100))
-
     def build_mkqa(self) -> pd.DataFrame:
         """Builds the MKQA dataset for the given language.
 
