@@ -56,7 +56,7 @@ class QADatasetBuilder:
         # df = self.translate_contexts(df)
 
         # Push to the Hub
-        # self.push_to_hub(df)
+        self.push_to_hub(df)
 
         return df
 
