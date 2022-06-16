@@ -31,4 +31,4 @@ clean:
 
 build_dataset:
 	@echo "Building dataset..."
-	@python -m src.scandi_qa.data
+	@python -m src.scandi_qa.builder
