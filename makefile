@@ -1,34 +1,40 @@
 .PHONY: notebook docs
 .EXPORT_ALL_VARIABLES:
-export ENV_DIR="$( poetry env list --full-path | grep Activated | cut -d' ' -f1 )"
+
+install-poetry:
+	@echo "Installing poetry..."
+	curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | python -
 
 activate:
-	@echo "Activating virtual environment"
+	@echo "Activating virtual environment..."
 	@poetry shell
-	@source "$(ENV_DIR)/bin/activate"
+	@source `poetry env info --path`/bin/activate
 
 install:
 	@echo "Installing..."
 	@git init
+	@git config commit.gpgsign true
+	@git config user.signingkey "D3163F7C12AE2EFBCE98058FE0E6DFBD1D28BC10"
+	@git config user.email "dan.nielsen@alexandra.dk"
+	@git config user.name "Dan Saattrup Nielsen"
 	@poetry install
 	@poetry run pre-commit install
 
-delete_env:
+remove-env:
 	@poetry env remove python3
+	@echo "Removed virtual environment."
 
-docs_view:
-	@echo View API documentation...
-	@pdoc src/scandi_qa
+view-docs:
+	@echo "Viewing API documentation..."
+	@poetry run pdoc src/scandi_qa
 
 docs:
-	@echo Save documentation to docs...
-	@pdoc src/scandi_qa -o docs
+	@poetry run pdoc src/scandi_qa -o docs
+	@echo "Saved documentation."
 
 clean:
 	@find . -type f -name "*.py[co]" -delete
 	@find . -type d -name "__pycache__" -delete
 	@rm -rf .pytest_cache
+	@echo "Cleaned repository."
 
-build_dataset:
-	@echo "Building dataset..."
-	@python -m scripts.build_dataset
