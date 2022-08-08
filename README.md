@@ -51,28 +51,37 @@ make view-docs
 ## Project structure
 ```bash
 .
+├── .flake8
+├── .gitignore
+├── .pre-commit-config.yaml
+├── LICENSE
+├── README.md
 ├── config
-│   ├── main.yaml                   # Main configuration file
-│   ├── model                       # Configurations for training model
-│   │   ├── model1.yaml             # First variation of parameters to train model
-│   └── process                     # Configurations for processing data
-│       ├── process1.yaml           # First variation of parameters to process data
 ├── data
-│   ├── final                       # data after training the model
-│   ├── processed                   # data after processing
-│   └── raw                         # raw data
-├── docs                            # documentation for your project
-├── .flake8                         # configuration for flake8 - a Python formatter tool
-├── .gitignore                      # ignore files that cannot commit to Git
-├── makefile                        # store useful commands to set up the environment
-├── models                          # store models
-├── notebooks                       # store notebooks
-├── .pre-commit-config.yaml         # configurations for pre-commit
-├── pyproject.toml                  # dependencies for poetry
-├── README.md                       # describe your project
-├── src                             # store source code
-│   ├── __init__.py                 # make src a Python module
-│   └── demo.py                     # demo module
-└── tests                           # store tests
-    └── __init__.py                 # make tests a Python module
+│   ├── final
+│   ├── processed
+│   └── raw
+├── makefile
+├── models
+├── notebooks
+│   └── data_eda.ipynb
+├── poetry.toml
+├── pyproject.toml
+├── scripts
+│   └── build_dataset.py
+├── src
+│   ├── scandi_qa
+│   │   ├── __init__.py
+│   │   ├── answer_extraction.py
+│   │   ├── builder.py
+│   │   ├── cleaning.py
+│   │   ├── embedder.py
+│   │   ├── merger.py
+│   │   ├── translation.py
+│   │   └── utils.py
+│   └── scripts
+│       ├── fix_dot_env_file.py
+│       └── versioning.py
+└── tests
+    └── __init__.py
 ```
