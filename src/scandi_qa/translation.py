@@ -4,8 +4,8 @@ import os
 import re
 from typing import Optional
 
+import nltk
 import requests
-from blingfire import text_to_sentences
 from datasets import load_dataset
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
@@ -101,11 +101,15 @@ class DeepLTranslator:
                 # Join the translations together with newlines
                 return "\n".join(translations)
 
-            # Otherwise, we use the blingfire library to split the text into sentences
+            # Otherwise, we use the nltk library to split the text into sentences
             elif not is_sentence:
 
                 # Split the text into sentences
-                texts = text_to_sentences(text).split("\n")
+                try:
+                    texts = nltk.sent_tokenize(text)
+                except LookupError:
+                    nltk.download("punkt", quiet=True)
+                    texts = nltk.sent_tokenize(text)
 
                 # Translate each text
                 with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
