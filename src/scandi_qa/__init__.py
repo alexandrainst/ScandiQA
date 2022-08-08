@@ -1,3 +1,8 @@
-"""Source code of your project."""
+"""
+.. include:: ../../README.md
+"""
 
-from .builder import QADatasetBuilder  # noqa
+import pkg_resources
+
+# Fetches the version of the package as defined in pyproject.toml
+__version__ = pkg_resources.get_distribution("scandi_qa").version

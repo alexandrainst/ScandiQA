@@ -2,18 +2,18 @@
 name = "scandi_qa"
 version = "0.0.1"
 description = "Scandinavian question-answering models and datasets."
-authors = ["Dan Saattrup Nielsen"]
+authors = [
+    "Dan Saattrup Nielsen <dan.nielsen@alexandra.dk>",
+]
+readme = "README.md"
+license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.11"
 hydra-core = "^1.1.1"
-pdoc3 = "^0.10.0"
 jupyterlab = "^3.4.2"
 click = "^8.1.3"
-black = {extras = ["jupyter"], version = "^22.3.0"}
 flake8 = "^4.0.1"
-isort = "^5.10.1"
-nbstripout = "^0.5.0"
 mypy = "^0.961"
 datasets = "^2.2.2"
 transformers = "^4.19.2"
@@ -28,24 +28,33 @@ requests = "^2.28.0"
 types-requests = "^2.27.30"
 blingfire = "^0.1.8"
 scipy = "1.8.1"
-pdoc = "^12.0.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.5"
+pytest-xdist = "^2.5.0"
+pytest-cov = "^3.0.0"
 pre-commit = "^2.17.0"
+pdoc = "^7.1.1"
+black = "^22.6.0"
+isort = "^5.10.1"
+readme-coverage-badger = ">=0.1.2,<1.0.0"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = ['--verbose',
-           '--durations=10',
-           '--color=yes',
-           '-s',
-           '-vv',
-           '--doctest-modules']
+addopts = [
+    '--verbose',
+    '--durations=10',
+    '--color=yes',
+    '-s',
+    '-vv',
+    '--doctest-modules',
+    '--cov=src/{{cookiecutter.package_name}}',
+    '-n 8',
+]
 xfail_strict = true
-filterwarnings = ["error"]
+filterwarnings = ["ignore"]
 log_cli_level = "info"
-testpaths = ["tests"]
+testpaths = ["tests", "src/scandi_qa"]
 
 [tool.black]
 line-length = 88

@@ -45,7 +45,7 @@ class DeepLTranslator:
         self.cache = {
             row["context_en"]: row["context"]
             for row in load_dataset(
-                "saattrupdan/mkqa_da", split="train", use_auth_token=True
+                "saattrupdan/scandiqa_da", split="train", use_auth_token=True
             )
         }
 
