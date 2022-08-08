@@ -8,7 +8,7 @@ Developers:
 
 ______________________________________________________________________
 [![Documentation](https://img.shields.io/badge/docs-passing-green)](https://alexandrainst.github.io/scandi_qa/index.html)
-[![License](https://img.shields.io/github/license/alexadalab/dr-hatespeech)](https://github.com/alexandrainst/scandi-qa/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/alexandrainst/scandi-qa)](https://github.com/alexandrainst/scandi-qa/blob/main/LICENSE)
 [![LastCommit](https://img.shields.io/github/last-commit/alexandrainst/scandi-qa)](https://github.com/alexandrainst/scandi-qa/commits/main)
 [![Code Coverage](https://img.shields.io/badge/Coverage-0%25-red.svg)](https://github.com/alexandrainst/scandi-qa/tree/main/tests)
 
