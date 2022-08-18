@@ -149,7 +149,7 @@ class Translator(ABC):
             response_json = response.json()
 
             # Extract the translation
-            translation = response_json["translations"][0]["text"]
+            translation = self._extract_translation(response_json=response_json)
 
         # Add the translation to the cache
         self.cache.add_to_cache(
@@ -190,6 +190,10 @@ class Translator(ABC):
 
     @abstractmethod
     def _get_response(self, text: str, target_lang: str) -> requests.Response:
+        pass
+
+    @abstractmethod
+    def _extract_translation(self, response_json: dict) -> str:
         pass
 
 
@@ -234,6 +238,24 @@ class DeepLTranslator(Translator):
         # Return the response
         return response
 
+    def _extract_translation(self, response_json: dict) -> str:
+        """Extract the translation from the response JSON.
+
+        Args:
+            response_json (dict):
+                The JSON response from the DeepL API.
+
+        Returns:
+            str:
+                The translation.
+        """
+
+        # Extract the translation
+        translation = response_json["translations"][0]["text"]
+
+        # Return the translation
+        return translation
+
 
 class GoogleTranslator(Translator):
     """A wrapper for the Google Translation API.
@@ -276,3 +298,21 @@ class GoogleTranslator(Translator):
 
         # Return the response
         return response
+
+    def _extract_translation(self, response_json: dict) -> str:
+        """Extract the translation from the response JSON.
+
+        Args:
+            response_json (dict):
+                The JSON response from the DeepL API.
+
+        Returns:
+            str:
+                The translation.
+        """
+
+        # Extract the translation
+        translation = response_json["data"]["translations"][0]["translatedText"]
+
+        # Return the translation
+        return translation
