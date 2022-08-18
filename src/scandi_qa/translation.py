@@ -42,11 +42,17 @@ class DeepLTranslator:
         self.api_key = api_key
         self.progress_bar = progress_bar
 
-        # Load in the cache
+        # Load in the cache. If it does not exist then create it.
         self.cache_path = Path("data") / "processed" / "translation_cache.jsonl"
-        with Path(self.cache_path).open("r") as f:
-            records = [json.loads(record) for record in f]
-            self.cache = {record["context_en"]: record["context"] for record in records}
+        if not self.cache_path.exists():
+            self.cache_path.touch()
+            self.cache = dict()
+        else:
+            with Path(self.cache_path).open("r") as f:
+                self.cache = {
+                    record["context_en"]: record["context"]
+                    for record in [json.loads(record) for record in f]
+                }
 
     def translate(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
