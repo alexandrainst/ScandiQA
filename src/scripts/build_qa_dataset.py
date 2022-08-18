@@ -1,5 +1,6 @@
 """Script that builds the ScandiQA dataset."""
 
+import sys
 from typing import List
 
 from scandi_qa import QADatasetBuilder
@@ -19,4 +20,9 @@ def main(languages: List[str] = ["da", "sv", "no"]):
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) > 1:
+        languages = sys.argv[1:]
+    else:
+        languages = ["da", "sv", "no"]
+
+    main(languages)
