@@ -23,7 +23,7 @@ class Merger:
 
     Args:
         language (str, optional):
-            The desired MKQA language. Must be either "en", "da", "sv" or "no".
+            The desired MKQA language. Must be either "da", "sv" or "no".
             Defaults to "da".
         cache_dir (str, optional):
             The directory to cache the merged dataset. Defaults to
