@@ -178,11 +178,18 @@ class Merger:
         examples = [example for example in examples if example is not None]
 
         # Add the contexts to the dictionary
-        titles = {int(example["id"]): example["title_en"] for example in examples}
-        contexts = {int(example["id"]): example["context_en"] for example in examples}
-        answer_ens = {int(example["id"]): example["answer_en"] for example in examples}
+        titles = {
+            int(example["example_id"]): example["title_en"] for example in examples
+        }
+        contexts = {
+            int(example["example_id"]): example["context_en"] for example in examples
+        }
+        answer_ens = {
+            int(example["example_id"]): example["answer_en"] for example in examples
+        }
         answer_start_ens = {
-            int(example["id"]): example["answer_start_en"] for example in examples
+            int(example["example_id"]): example["answer_start_en"]
+            for example in examples
         }
 
         # Add the titles and contexts as columns in the MKQA dataset
