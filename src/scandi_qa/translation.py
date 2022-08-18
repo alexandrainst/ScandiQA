@@ -1,18 +1,26 @@
 """DeepL translation wrapper."""
 
-import json
 import os
 import re
-from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol
 
 import nltk
 import requests
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
 
+from .cache import TranslationCache
+
 # Load environment variables
 load_dotenv()
+
+
+class Translator(Protocol):
+    def translate(self, text: str, target_lang: str, **kwargs) -> str:
+        ...
+
+    def __call__(self, text: str, target_lang: str, **kwargs) -> str:
+        ...
 
 
 class DeepLTranslator:
@@ -42,17 +50,8 @@ class DeepLTranslator:
         self.api_key = api_key
         self.progress_bar = progress_bar
 
-        # Load in the cache. If it does not exist then create it.
-        self.cache_path = Path("data") / "processed" / "translation_cache.jsonl"
-        if not self.cache_path.exists():
-            self.cache_path.touch()
-            self.cache = dict()
-        else:
-            with Path(self.cache_path).open("r") as f:
-                self.cache = {
-                    record["context_en"]: record["context"]
-                    for record in [json.loads(record) for record in f]
-                }
+        # Initialise the cache
+        self.cache = TranslationCache()
 
     def translate(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
@@ -159,27 +158,10 @@ class DeepLTranslator:
             translation = response_json["translations"][0]["text"]
 
         # Add the translation to the cache
-        self.save_to_cache(text=text, translation=translation)
+        self.cache.add_to_cache(text=text, translation=translation)
 
         # Return the translation
         return translation
-
-    def save_to_cache(self, text: str, translation: str) -> None:
-        """Save the translation to the cache.
-
-        Args:
-            text (str):
-                The text to translate.
-            translation (str):
-                The translation of the text.
-        """
-        # Save the translation to the in-memory cache
-        self.cache[text] = translation
-
-        # Append the translation to the cache file
-        with self.cache_path.open("a") as f:
-            record = dict(context_en=text, context=translation)
-            f.write(json.dumps(record) + "\n")
 
     def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
