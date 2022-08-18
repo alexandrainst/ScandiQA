@@ -1,6 +1,6 @@
 """Class which embeds texts and computes cosine similarities between them."""
 
-from typing import List, Union
+from typing import List
 
 import numpy as np
 import torch
