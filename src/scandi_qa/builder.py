@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer
 from .merger import Merger
-from .translation import DeepLTranslator
+from .translation import DeepLTranslator, GoogleTranslator, Translator
 
 
 class QADatasetBuilder:
@@ -20,10 +20,14 @@ class QADatasetBuilder:
             '~/.cache/huggingface/datasets'.
 
     Attributes:
-        language (str): The language of the dataset.
-        cache_dir (str): The directory to cache the dataset.
-        merger (Merger): The merger used to merge MKQA and NQ.
-        translator (DeepLTranslator): The translator used to translate the questions.
+        language (str):
+            The language of the dataset.
+        cache_dir (str):
+            The directory to cache the dataset.
+        merger (Merger):
+            The merger used to merge MKQA and NQ.
+        translator (DeepLTranslator):
+            The translator used to translate the questions.
 
     Raises:
         ValueError:
@@ -40,7 +44,13 @@ class QADatasetBuilder:
         self.language = language
         self.cache_dir = cache_dir
         self.merger = Merger(language=self.language, cache_dir=self.cache_dir)
-        self.translator = DeepLTranslator()
+
+        # Set up translator, depending on the language
+        self.translator: Translator
+        if language in {"da", "sv"}:
+            self.translator = DeepLTranslator()
+        else:
+            self.translator = GoogleTranslator()
 
     def build(self) -> pd.DataFrame:
         """Builds the dataset and pushes it to the Hugging Face Hub.
@@ -56,6 +66,7 @@ class QADatasetBuilder:
         df = self.translate_contexts(df)
 
         # Push to the Hub
+        breakpoint()
         self.push_to_hub(df)
 
         return df
@@ -80,6 +91,10 @@ class QADatasetBuilder:
 
         # Remove the rows with missing answers
         translated_df.dropna(subset="answer", inplace=True)
+
+        # Set datatypes of integer columns
+        translated_df.answer_start = translated_df.answer_start.astype(int)
+        translated_df.answer_start_en = translated_df.answer_start_en.astype(int)
 
         # Return the translated dataset
         return translated_df
@@ -118,6 +133,7 @@ class QADatasetBuilder:
         # context as the new context and set the starting index to be -1
         if example.answer == "":
             example["answer_start"] = -1
+            example["answer_start_en"] = -1
 
         # Otherwise, attempt to extract the answer from the translated context
         else:
