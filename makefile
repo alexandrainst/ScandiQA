@@ -109,4 +109,3 @@ tree:
 		-I *.txt \
 		-I checkpoint-* \
 		-I .coverage*
-
