@@ -1,12 +1,13 @@
 """DeepL translation wrapper."""
 
+import json
 import os
 import re
+from pathlib import Path
 from typing import Optional
 
 import nltk
 import requests
-from datasets import load_dataset
 from dotenv import load_dotenv
 from tqdm.auto import tqdm
 
@@ -41,15 +42,13 @@ class DeepLTranslator:
         self.api_key = api_key
         self.progress_bar = progress_bar
 
-        # TEMP: Load in a previously compiled dataset, to use as cache
-        self.cache = {
-            row["context_en"]: row["context"]
-            for row in load_dataset(
-                "saattrupdan/scandiqa_da", split="train", use_auth_token=True
-            )
-        }
+        # Load in the cache
+        self.cache_path = Path("data") / "processed" / "translation_cache.jsonl"
+        with Path(self.cache_path).open("r") as f:
+            records = [json.loads(record) for record in f]
+            self.cache = {record["context_en"]: record["context"] for record in records}
 
-    def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
+    def translate(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
         """Translate text into the specified language.
 
         Args:
@@ -99,7 +98,7 @@ class DeepLTranslator:
                     ]
 
                 # Join the translations together with newlines
-                return "\n".join(translations)
+                translation = "\n".join(translations)
 
             # Otherwise, we use the nltk library to split the text into sentences
             elif not is_sentence:
@@ -119,7 +118,7 @@ class DeepLTranslator:
                     ]
 
                 # Join the translations together with newlines
-                return " ".join(translations)
+                translation = " ".join(translations)
 
             # Otherwise, we simply split the text into chunks of 500 characters
             else:
@@ -135,7 +134,7 @@ class DeepLTranslator:
                     ]
 
                 # Join the translations together with newlines
-                return "".join(translations)
+                translation = "".join(translations)
 
         # Otherwise, if the status code is not 200 then raise an error
         elif response.status_code != 200:
@@ -151,7 +150,46 @@ class DeepLTranslator:
             response_json = response.json()
 
             # Extract the translation
-            translated = response_json["translations"][0]["text"]
+            translation = response_json["translations"][0]["text"]
 
-            # Return the translation
-            return translated
+        # Add the translation to the cache
+        self.save_to_cache(text=text, translation=translation)
+
+        # Return the translation
+        return translation
+
+    def save_to_cache(self, text: str, translation: str) -> None:
+        """Save the translation to the cache.
+
+        Args:
+            text (str):
+                The text to translate.
+            translation (str):
+                The translation of the text.
+        """
+        # Save the translation to the in-memory cache
+        self.cache[text] = translation
+
+        # Append the translation to the cache file
+        with self.cache_path.open("a") as f:
+            record = dict(context_en=text, context=translation)
+            f.write(json.dumps(record) + "\n")
+
+    def __call__(self, text: str, target_lang: str, is_sentence: bool = False) -> str:
+        """Translate text into the specified language.
+
+        Args:
+            text (str):
+                The text to translate.
+            target_lang (str):
+                The language to translate the text into.
+            is_sentence (bool, optional):
+                Whether the text is a sentence. Defaults to False.
+
+        Returns:
+            str:
+                The translated text.
+        """
+        return self.translate(
+            text=text, target_lang=target_lang, is_sentence=is_sentence
+        )
