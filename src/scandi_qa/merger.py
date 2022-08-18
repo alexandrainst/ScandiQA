@@ -1,9 +1,16 @@
 """Class that filters the Natural Questions dataset."""
 
+import gzip
+import multiprocessing as mp
+from pathlib import Path
+from typing import Union
+
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
 from datasets import load_dataset
 from datasets.arrow_dataset import Example
+from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer, generate_answer_candidates
@@ -48,8 +55,17 @@ class Merger:
             Pandas DataFrame:
                 The MKQA dataset for the given language.
         """
+        # Set up path to the MKQA dataset
+        mkqa_path = Path("data") / "raw" / "mkqa.jsonl"
+
+        # If the MKQA dataset does not exist, download it
+        if not mkqa_path.exists():
+            self.download_mkqa()
+
         # Load the raw MKQA dataset
-        mkqa = load_dataset("mkqa", split="train", cache_dir=self.cache_dir).to_pandas()
+        mkqa: pd.DataFrame = load_dataset(
+            "json", data_files=str(mkqa_path), split="train"
+        ).to_pandas()
 
         # Get the language-specific queries and answers
         mkqa["question"] = mkqa.queries.map(lambda dct: dct[self.language])
@@ -73,6 +89,43 @@ class Merger:
         # Return the processed MKQA dataset
         return mkqa
 
+    def download_mkqa(self):
+        """Downloads the MKQA dataset."""
+
+        # Set up path to the MKQA dataset
+        mkqa_compressed_path = Path("data") / "raw" / "mkqa.jsonl.gz"
+        mkqa_path = Path("data") / "raw" / "mkqa.jsonl"
+
+        # Set up the URL to the MKQA dataset
+        url = "https://github.com/apple/ml-mkqa/raw/main/dataset/mkqa.jsonl.gz"
+
+        with requests.get(url, stream=True) as response:
+
+            # If the response was unsuccessful then raise an error
+            if response.status_code != 200:
+                raise RuntimeError(f"[{response.status_code}] {response.content!r}")
+
+            # Download compressed dataset with progress bar
+            total = int(response.headers["Content-Length"])
+            with tqdm(
+                total=total, unit="iB", unit_scale=True, desc="Downloading MKQA"
+            ) as pbar:
+                with Path(mkqa_compressed_path).open("wb") as f:
+                    for data in response.iter_content(1024):
+                        pbar.update(len(data))
+                        f.write(data)
+
+            # Uncompress dataset
+            with gzip.open(mkqa_compressed_path, mode="r") as f:
+                mkqa_data = f.read()
+
+            # Store uncompressed dataset
+            with Path(mkqa_path).open("wb") as f:
+                f.write(mkqa_data)
+
+            # Delete compressed dataset
+            mkqa_compressed_path.unlink()
+
     def merge(self) -> pd.DataFrame:
         """Merges the Natural Questions dataset with the MKQA dataset.
 
@@ -90,8 +143,8 @@ class Merger:
         answer_ens = dict()
         answer_start_ens = dict()
 
-        # Iterate over the examples in the natural questions dataset
-        for example in tqdm(self.nq, desc="Processing examples"):
+        # Set up worker function, to be used in the parallel map
+        def task(example: Example) -> Union[Example, None]:
 
             # Get the example ID
             example_id = int(example["id"])
@@ -100,17 +153,37 @@ class Merger:
             # those
             yes_no_answer = example["annotations"]["yes_no_answer"][0] == 1
 
-            # Check if the example ID is in the MKQA dataset
+            # Process the example if if it is in the MKQA dataset and is not a
+            # yes/no answer
             if example_id in dataset.index and not yes_no_answer:
-
-                # Process the example
                 example = self._process_nq_example(example)
+                return example
 
-                # Add the context to the dictionary
-                titles[example_id] = example["title_en"]
-                contexts[example_id] = example["context_en"]
-                answer_ens[example_id] = example["answer_en"]
-                answer_start_ens[example_id] = example["answer_start_en"]
+            # Return None if the example is not in the MKQA dataset, or is a
+            # yes/no answer
+            del example_id, yes_no_answer, example
+            return None
+
+        # Merge the Natural Questions dataset with the MKQA dataset in parallel
+        with Parallel(
+            n_jobs=mp.cpu_count() - 1,
+            batch_size=500,
+            timeout=999_999,
+            backend="threading",
+        ) as parallel:
+            with tqdm(self.nq, desc="Merging MKQA with NQ") as pbar:
+                examples = parallel(delayed(task)(example) for example in pbar)
+
+        # Remove the None entries from the examples
+        examples = [example for example in examples if example is not None]
+
+        # Add the contexts to the dictionary
+        titles = {int(example["id"]): example["title_en"] for example in examples}
+        contexts = {int(example["id"]): example["context_en"] for example in examples}
+        answer_ens = {int(example["id"]): example["answer_en"] for example in examples}
+        answer_start_ens = {
+            int(example["id"]): example["answer_start_en"] for example in examples
+        }
 
         # Add the titles and contexts as columns in the MKQA dataset
         dataset["title_en"] = dataset.index.map(titles)
