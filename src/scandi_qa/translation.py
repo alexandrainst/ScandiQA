@@ -67,8 +67,8 @@ class Translator(ABC):
         # Query the API for the translation
         response = self._get_response(text=text, target_lang=target_lang)
 
-        # Split the text up if it is too long (HTTP error code 411 or 414)
-        if response.status_code in {411, 414}:
+        # Split the text up if it is too long
+        if response.status_code in {411, 414, 502}:
 
             # If there are newlines in the text then split by the middle newline
             if "\n" in text:
