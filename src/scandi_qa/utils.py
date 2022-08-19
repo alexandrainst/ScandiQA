@@ -98,3 +98,65 @@ NORWEGIAN_NUMERALS = {
     19: ["nitten", "nittende"],
     20: ["tjue", "tjuende"],
 }
+
+MKQA_LANGUAGES = {
+    "ar",  # Arabic
+    "da",  # Danish
+    "de",  # German
+    "en",  # English
+    "es",  # Spanish
+    "fi",  # Finnish
+    "fr",  # French
+    "he",  # Hebrew
+    "hu",  # Hungarian
+    "it",  # Italian
+    "ja",  # Japanese
+    "ko",  # Korean
+    "km",  # Khmer
+    "ms",  # Malay
+    "nl",  # Dutch
+    "no",  # Norwegian
+    "pl",  # Polish
+    "pt",  # Portuguese
+    "ru",  # Russian
+    "sv",  # Swedish
+    "th",  # Thai
+    "tr",  # Turkish
+    "vi",  # Vietnamese
+    "zh",  # Chinese
+    "zh_cn",  # Chinese (Simplified)
+    "zh_hk",  # Chinese (Hong kong)
+    "zh_tw",  # Chinese (Traditional)
+}
+
+
+DEEPL_LANGUAGES = {
+    "bg",  # Bulgarian
+    "zh",  # Chinese
+    "zh_cn",  # Chinese (Simplified)
+    "cz",  # Czech
+    "da",  # Danish
+    "nl",  # Dutch
+    "en",  # English
+    "et",  # Estonian
+    "fi",  # Finnish
+    "fr",  # French
+    "de",  # German
+    "el",  # Greek
+    "hu",  # Hungarian
+    "in",  # Indonesian
+    "it",  # Italian
+    "ja",  # Japanese
+    "lv",  # Latvian
+    "lt",  # Lithuanian
+    "pl",  # Polish
+    "pt",  # Portuguese
+    "pt_br",  # Portuguese (Brazil)
+    "ro",  # Romanian
+    "ru",  # Russian
+    "sk",  # Slovak
+    "sl",  # Slovenian
+    "es",  # Spanish
+    "sv",  # Swedish
+    "tu",  # Turkish
+}

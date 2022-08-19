@@ -9,6 +9,7 @@ from tqdm.auto import tqdm
 from .answer_extraction import extract_answer
 from .merger import Merger
 from .translation import DeepLTranslator, GoogleTranslator, Translator
+from .utils import DEEPL_LANGUAGES, MKQA_LANGUAGES
 
 
 class QADatasetBuilder:
@@ -16,7 +17,7 @@ class QADatasetBuilder:
 
     Args:
         language (str, optional):
-            The language of the dataset. Can be "da", "sv" or "no". Defaults to "da".
+            The two-character language code of the dataset. Defaults to "da".
         cache_dir (str, optional):
             The directory to cache the dataset. Defaults to
             '~/.cache/huggingface/datasets'.
@@ -40,8 +41,11 @@ class QADatasetBuilder:
         self, language: str = "da", cache_dir: str = "~/.cache/huggingface/datasets"
     ):
         # If the language is not supported, raise an error
-        if language not in ["da", "sv", "no"]:
-            raise ValueError(f"Language '{language}' not supported")
+        if language not in MKQA_LANGUAGES:
+            raise ValueError(
+                f"Language '{language}' not supported. We only support "
+                f"{', '.join(MKQA_LANGUAGES)}"
+            )
 
         self.language = language
         self.cache_dir = cache_dir
@@ -49,7 +53,7 @@ class QADatasetBuilder:
 
         # Set up translator, depending on the language
         self.translator: Translator
-        if language in {"da", "sv"}:
+        if language in DEEPL_LANGUAGES:
             self.translator = DeepLTranslator()
         else:
             self.translator = GoogleTranslator()
