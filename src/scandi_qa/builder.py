@@ -69,7 +69,7 @@ class QADatasetBuilder:
         df = self.merger.merge()
 
         # Store the merged dataset
-        merged_path = Path("path") / "processed" / f"merged_{self.language}.parquet"
+        merged_path = Path("data") / "processed" / f"merged_{self.language}.parquet"
         df.to_parquet(merged_path)
 
         # Translate the English contexts
