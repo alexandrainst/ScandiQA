@@ -1,5 +1,7 @@
 """Loading and processing of data."""
 
+from pathlib import Path
+
 import pandas as pd
 from datasets import Dataset
 from tqdm.auto import tqdm
@@ -62,11 +64,14 @@ class QADatasetBuilder:
         # Merge the MKQA and NQ datasets
         df = self.merger.merge()
 
+        # Store the merged dataset
+        merged_path = Path("path") / "processed" / f"merged_{self.language}.parquet"
+        df.to_parquet(merged_path)
+
         # Translate the English contexts
         df = self.translate_contexts(df)
 
         # Push to the Hub
-        breakpoint()
         self.push_to_hub(df)
 
         return df
