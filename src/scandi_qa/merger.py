@@ -253,6 +253,9 @@ class Merger:
             # Parse the HTML to get the long answer as plain text
             context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
+            # Store the extraction method
+            extraction_method = "nq_long_answer"
+
         # Otherwise, if there is neither a long answer nor an answer in MKQA then use
         # the <p> tag that has the largest cosine similarity with the question as the
         # context
@@ -279,6 +282,9 @@ class Merger:
                 answer_en = None
                 answer_start_en = None
 
+                # Store the extraction method
+                extraction_method = "no_candidate_contexts_no_mkqa_answer"
+
             # Otherwise, we find the context with the highest cosine similarity with
             # the question
             else:
@@ -288,6 +294,9 @@ class Merger:
                 # Get the paragraph with the largest similarity
                 best_idx = similarities.index(max(similarities))  # type: ignore
                 context_en = context_candidates[best_idx]
+
+                # Store the extraction method
+                extraction_method = "candidate_context_no_mkqa_answer"
 
         # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
         # extract all the answer candidates from the English version of the MKQA
@@ -321,6 +330,9 @@ class Merger:
                 answer_en = None
                 answer_start_en = None
 
+                # Store the extraction method
+                extraction_method = "no_candidate_contexts_mkqa_answer"
+
             # Otherwise, we choose the context candidate with the highest cosine
             # similarity with the question
             else:
@@ -335,6 +347,9 @@ class Merger:
                 # Get the candidate context with the largest similarity
                 best_idx = similarities.index(max(similarities))  # type: ignore
                 context_en = context_candidates[best_idx]
+
+                # Store the extraction method
+                extraction_method = "candidate_context_mkqa_answer"
 
         # Clean the context if it exists
         if context_en is not None:
@@ -363,12 +378,13 @@ class Merger:
                 answer_en = answer_dict["answer"]
                 answer_start_en = answer_dict["answer_start"]
 
-        # Add the example ID, title and context to the example
+        # Add the example ID, title, context and extraction method to the example
         example["example_id"] = example_id
         example["title_en"] = title
         example["context_en"] = context_en
         example["answer_en"] = answer_en
         example["answer_start_en"] = answer_start_en
+        example["extraction_method"] = extraction_method
 
         # Remove the 'id', 'document', 'question' and 'annotations' keys
         example.pop("id")
