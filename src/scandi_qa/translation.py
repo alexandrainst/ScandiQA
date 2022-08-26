@@ -74,22 +74,25 @@ class Translator(ABC):
             if "\n" in text:
 
                 # Remove duplicate newlines
-                text = re.sub(r"\n+", "\n", text)
+                text_modified = re.sub(r"\n+", "\n", text)
 
                 # Locate the indices of all the newlines
-                newline_indices = [i for i, c in enumerate(text) if c == "\n"]
+                newline_indices = [i for i, c in enumerate(text_modified) if c == "\n"]
 
                 # Choose the median index
                 median_index = newline_indices[len(newline_indices) // 2]
 
                 # Split the text by the middle newline
-                texts = [text[:median_index], text[median_index + 1 :]]
+                texts = [
+                    text_modified[:median_index],
+                    text_modified[median_index + 1 :],
+                ]
 
                 # Translate each text
                 with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
                     translations = [
-                        self.translate(text=text, target_lang=target_lang)
-                        for text in pbar
+                        self.translate(text=chunk, target_lang=target_lang)
+                        for chunk in pbar
                     ]
 
                 # Join the translations together with newlines
@@ -109,9 +112,9 @@ class Translator(ABC):
                 with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
                     translations = [
                         self.translate(
-                            text=text, target_lang=target_lang, is_sentence=True
+                            text=chunk, target_lang=target_lang, is_sentence=True
                         )
-                        for text in pbar
+                        for chunk in pbar
                     ]
 
                 # Join the translations together with newlines
@@ -127,9 +130,9 @@ class Translator(ABC):
                 with tqdm(texts, desc="Translating text chunks", leave=False) as pbar:
                     translations = [
                         self.translate(
-                            text=text, target_lang=target_lang, is_sentence=True
+                            text=chunk, target_lang=target_lang, is_sentence=True
                         )
-                        for text in pbar
+                        for chunk in pbar
                     ]
 
                 # Join the translations together with newlines
