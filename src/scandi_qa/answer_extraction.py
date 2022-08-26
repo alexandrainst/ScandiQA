@@ -70,19 +70,6 @@ def generate_answer_candidates(
         answer_candidates.append(f"{month_description} {day}, {year}")
         answer_candidates.append(str(year))
 
-    # If a number is found in the answer, add candidates where only the number is kept
-    if re.search(r"[0-9]", answer) and re.search(r"[a-zæøåA-ZÆØÅ]", answer):
-        numbers = re.findall(r"[0-9.]+", answer)
-        for number in numbers:
-            answer_candidates.extend(
-                generate_answer_candidates(
-                    answer=number,
-                    answer_en=None,
-                    language=language,
-                    translator=translator,
-                )
-            )
-
     # Add candidates where we replace "." by "," and vice versa
     if "." in answer:
         answer_candidates.append(answer.replace(".", ","))
