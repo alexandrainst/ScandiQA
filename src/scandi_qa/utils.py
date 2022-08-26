@@ -1,5 +1,53 @@
 """Utility functions and variables for the project."""
 
+from typing import Dict, List
+
+
+def get_numerals(language: str) -> Dict[int, List[str]]:
+    """Get the mapping of numerals associated to a given language.
+
+    Args:
+        language (str):
+            The language to get the numerals for.
+
+    Returns:
+        Dict[int, List[str]]:
+            The mapping of numerals associated to the language.
+    """
+    if language == "en":
+        return ENGLISH_NUMERALS
+    elif language == "da":
+        return DANISH_NUMERALS
+    elif language == "sv":
+        return SWEDISH_NUMERALS
+    elif language == "no":
+        return NORWEGIAN_NUMERALS
+    else:
+        raise ValueError(f"Unknown language: {language}")
+
+
+def get_months(language: str) -> Dict[int, str]:
+    """Get the mapping of months associated to a given language.
+
+    Args:
+        language (str):
+            The language to get the months for.
+
+    Returns:
+        Dict[int, str]:
+            The mapping of months associated to the language.
+    """
+    if language == "en":
+        return ENGLISH_MONTHS
+    elif language == "da":
+        return DANISH_MONTHS
+    elif language == "sv":
+        return SWEDISH_MONTHS
+    elif language == "no":
+        return NORWEGIAN_MONTHS
+    else:
+        raise ValueError(f"Unknown language: {language}")
+
 
 ENGLISH_NUMERALS = {
     1: ["one", "first"],
@@ -98,6 +146,71 @@ NORWEGIAN_NUMERALS = {
     19: ["nitten", "nittende"],
     20: ["tjue", "tjuende"],
 }
+
+
+ENGLISH_MONTHS = {
+    1: "january",
+    2: "february",
+    3: "march",
+    4: "april",
+    5: "may",
+    6: "june",
+    7: "july",
+    8: "august",
+    9: "september",
+    10: "october",
+    11: "november",
+    12: "december",
+}
+
+
+DANISH_MONTHS = {
+    1: "januar",
+    2: "februar",
+    3: "marts",
+    4: "april",
+    5: "maj",
+    6: "juni",
+    7: "juli",
+    8: "august",
+    9: "september",
+    10: "oktober",
+    11: "november",
+    12: "december",
+}
+
+
+SWEDISH_MONTHS = {
+    1: "januari",
+    2: "februari",
+    3: "mars",
+    4: "april",
+    5: "maj",
+    6: "juni",
+    7: "juli",
+    8: "augusti",
+    9: "september",
+    10: "oktober",
+    11: "november",
+    12: "december",
+}
+
+
+NORWEGIAN_MONTHS = {
+    1: "januar",
+    2: "februar",
+    3: "mars",
+    4: "april",
+    5: "mai",
+    6: "juni",
+    7: "juli",
+    8: "august",
+    9: "september",
+    10: "oktober",
+    11: "november",
+    12: "desember",
+}
+
 
 MKQA_LANGUAGES = {
     "ar",  # Arabic
