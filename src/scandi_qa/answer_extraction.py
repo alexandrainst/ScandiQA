@@ -141,7 +141,7 @@ def generate_answer_candidates(
         {
             candidate
             for candidate in answer_candidates
-            if candidate not in ["", ".", ","]
+            if re.search(r"[a-zæøåA-ZÆØÅ0-9]", candidate)
         }
     )
 
