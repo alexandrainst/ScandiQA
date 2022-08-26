@@ -115,8 +115,11 @@ def generate_answer_candidates(
 
     # Add the translation of the answer to the desired language to the answer
     # candidates
-    translated_answer = translator.translate(text=answer, target_lang=language)
-    answer_candidates.append(translated_answer)
+    translated_answers = [
+        translator.translate(text=cand, target_lang=language)
+        for cand in answer_candidates + [answer]
+    ]
+    answer_candidates.extend(translated_answers)
 
     # Manually add numerals in the target language, if the answer is a descriptive
     # numeral
