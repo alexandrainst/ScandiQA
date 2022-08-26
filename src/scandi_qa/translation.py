@@ -9,6 +9,7 @@ from typing import Optional
 import nltk
 import requests
 from dotenv import load_dotenv
+from requests.exceptions import RequestException
 from tqdm.auto import tqdm
 
 from .cache import TranslationCache
@@ -65,8 +66,13 @@ class Translator(ABC):
         if self.cache.contains(text=text, target_lang=target_lang):
             return self.cache.get_translation(text=text, target_lang=target_lang)
 
-        # Query the API for the translation
-        response = self._get_response(text=text, target_lang=target_lang)
+        # Query the API for the translation, and try again if the API fails
+        while True:
+            try:
+                response = self._get_response(text=text, target_lang=target_lang)
+                break
+            except RequestException:
+                time.sleep(1)
 
         # If we sent too many requests then wait a second and try again
         while response.status_code == 429:
