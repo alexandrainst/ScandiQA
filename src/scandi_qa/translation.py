@@ -2,6 +2,7 @@
 
 import os
 import re
+import time
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -66,6 +67,11 @@ class Translator(ABC):
 
         # Query the API for the translation
         response = self._get_response(text=text, target_lang=target_lang)
+
+        # If we sent too many requests then wait a second and try again
+        while response.status_code == 429:
+            time.sleep(1)
+            response = self._get_response(text=text, target_lang=target_lang)
 
         # Split the text up if it is too long
         if response.status_code in {400, 411, 413, 414, 502}:
