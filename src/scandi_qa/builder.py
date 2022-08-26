@@ -49,7 +49,6 @@ class QADatasetBuilder:
 
         self.language = language
         self.cache_dir = cache_dir
-        self.merger = Merger(language=self.language, cache_dir=self.cache_dir)
 
         # Set up translator, depending on the language
         self.translator: Translator
@@ -58,6 +57,12 @@ class QADatasetBuilder:
         else:
             self.translator = GoogleTranslator()
 
+        self.merger = Merger(
+            translator=self.translator,
+            language=self.language,
+            cache_dir=self.cache_dir,
+        )
+
     def build(self) -> pd.DataFrame:
         """Builds the dataset and pushes it to the Hugging Face Hub.
 
@@ -65,12 +70,17 @@ class QADatasetBuilder:
             Pandas DataFrame:
                 The resulting dataset for the given language.
         """
-        # Merge the MKQA and NQ datasets
-        df = self.merger.merge()
-
-        # Store the merged dataset
+        # Set up the path to the merged dataset
         merged_path = Path("data") / "processed" / f"merged_{self.language}.parquet"
-        df.to_parquet(merged_path)
+
+        # Merge the MKQA and NQ datasets if they haven't been merged yet
+        if not merged_path.exists():
+            df = self.merger.merge()
+            df.to_parquet(merged_path)
+
+        # Otherwise load the merged dataset
+        else:
+            df = pd.read_parquet(merged_path)
 
         # Translate the English contexts
         df = self.translate_contexts(df)
@@ -144,6 +154,13 @@ class QADatasetBuilder:
             example.context_en, target_lang=self.language
         )
 
+        # Append the English title to both the English context and the translated
+        # context, if it does not already appear in the context
+        if example.title_en not in example.context:
+            example["context"] = f"{example.title_en}\n{example.context}"
+        if example.title_en not in example.context_en:
+            example["context_en"] = f"{example.title_en}\n{example.context_en}"
+
         # If the example does not have an MKQA answer then we simply use the translated
         # context as the new context and set the starting index to be -1
         if example.answer == "":
@@ -153,7 +170,11 @@ class QADatasetBuilder:
         # Otherwise, attempt to extract the answer from the translated context
         else:
             answer_dict = extract_answer(
-                answer=example.answer, context=example.context, language=self.language
+                answer=example.answer,
+                answer_en=example.answer_en,
+                context=example.context,
+                language=self.language,
+                translator=self.translator,
             )
 
             # If no answer could be extracted then set the answer and answer_start to
@@ -165,6 +186,17 @@ class QADatasetBuilder:
             # Otherwise, we set the answer candidate appearing in the translated
             # context as the answer, and the translated context as the context
             else:
+
+                # Sanity check that the found answer actually appears in the translated
+                # context, at the correct position
+                ctx_answer_start = answer_dict["answer_start"]
+                ctx_answer_end = answer_dict["answer_start"] + len(
+                    answer_dict["answer"]
+                )
+                ctx_answer = example.context[ctx_answer_start:ctx_answer_end]
+                assert answer_dict["answer"] == ctx_answer
+
+                # Store the found answer and its starting index in the example
                 example["answer"] = answer_dict["answer"]
                 example["answer_start"] = answer_dict["answer_start"]
 
@@ -174,8 +206,10 @@ class QADatasetBuilder:
                 if example.answer_start_en == -1:
                     answer_en_dict = extract_answer(
                         answer=example.answer,
+                        answer_en=None,
                         context=example.context_en,
-                        language=self.language,
+                        language="en",
+                        translator=self.translator,
                     )
                     if answer_en_dict is not None:
                         example["answer_en"] = answer_en_dict["answer"]

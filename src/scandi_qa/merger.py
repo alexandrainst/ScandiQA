@@ -16,12 +16,15 @@ from tqdm.auto import tqdm
 from .answer_extraction import extract_answer, generate_answer_candidates
 from .cleaning import clean_answer, clean_context, clean_question
 from .embedder import Embedder
+from .translation import Translator
 
 
 class Merger:
     """Class that merges the Natural Questions dataset with the MKQA dataset.
 
     Args:
+        translator (Translator):
+            The Translator object that is used to translate the questions.
         language (str, optional):
             The desired MKQA language. Must be either "da", "sv" or "no".
             Defaults to "da".
@@ -38,7 +41,10 @@ class Merger:
     """
 
     def __init__(
-        self, language: str = "da", cache_dir: str = "~/.cache/huggingface/datasets"
+        self,
+        translator: Translator,
+        language: str = "da",
+        cache_dir: str = "~/.cache/huggingface/datasets",
     ):
         self.language = language
         self.cache_dir = cache_dir
@@ -47,6 +53,7 @@ class Merger:
             "natural_questions", split="train", cache_dir=self.cache_dir
         )
         self.embedder = Embedder()
+        self.translator = translator
 
     def build_mkqa(self) -> pd.DataFrame:
         """Builds the MKQA dataset for the given language.
@@ -254,7 +261,7 @@ class Merger:
             context_en = BeautifulSoup(long_answer_html, "html.parser").get_text()
 
             # Store the extraction method
-            extraction_method = "nq_long_answer"
+            context_extraction_method = "nq_long_answer"
 
         # Otherwise, if there is neither a long answer nor an answer in MKQA then use
         # the <p> tag that has the largest cosine similarity with the question as the
@@ -283,7 +290,7 @@ class Merger:
                 answer_start_en = None
 
                 # Store the extraction method
-                extraction_method = "no_candidate_contexts_no_mkqa_answer"
+                context_extraction_method = "no_candidate_contexts_no_mkqa_answer"
 
             # Otherwise, we find the context with the highest cosine similarity with
             # the question
@@ -296,7 +303,7 @@ class Merger:
                 context_en = context_candidates[best_idx]
 
                 # Store the extraction method
-                extraction_method = "candidate_context_no_mkqa_answer"
+                context_extraction_method = "candidate_context_no_mkqa_answer"
 
         # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
         # extract all the answer candidates from the English version of the MKQA
@@ -306,7 +313,10 @@ class Merger:
 
             # Get list of answer candidates
             answer_candidates = generate_answer_candidates(
-                answer=answer_en, language="en"
+                answer=answer_en,
+                answer_en=None,
+                language="en",
+                translator=self.translator,
             )
 
             # Extract all the <p>, <span> and <table> tags in the HTML context which
@@ -331,7 +341,7 @@ class Merger:
                 answer_start_en = None
 
                 # Store the extraction method
-                extraction_method = "no_candidate_contexts_mkqa_answer"
+                context_extraction_method = "no_candidate_contexts_mkqa_answer"
 
             # Otherwise, we choose the context candidate with the highest cosine
             # similarity with the question
@@ -349,7 +359,7 @@ class Merger:
                 context_en = context_candidates[best_idx]
 
                 # Store the extraction method
-                extraction_method = "candidate_context_mkqa_answer"
+                context_extraction_method = "candidate_context_mkqa_answer"
 
         # Clean the context if it exists
         if context_en is not None:
@@ -357,14 +367,22 @@ class Merger:
 
             # Extract the answer from the cleaned context
             answer_dict = extract_answer(
-                answer=answer_en, context=context_en, language=self.language
+                answer=answer_en,
+                answer_en=None,
+                context=context_en,
+                language=self.language,
+                translator=self.translator,
             )
 
             # If no answer was found then try searching for the language-specific
             # answer in the English context instead
             if answer_dict is None:
                 answer_dict = extract_answer(
-                    answer=answer, context=context_en, language=self.language
+                    answer=answer,
+                    answer_en=answer_en,
+                    context=context_en,
+                    language=self.language,
+                    translator=self.translator,
                 )
 
             # If the answer was still not found then we set the answer to the empty
@@ -384,7 +402,7 @@ class Merger:
         example["context_en"] = context_en
         example["answer_en"] = answer_en
         example["answer_start_en"] = answer_start_en
-        example["extraction_method"] = extraction_method
+        example["context_extraction_method"] = context_extraction_method
 
         # Remove the 'id', 'document', 'question' and 'annotations' keys
         example.pop("id")
