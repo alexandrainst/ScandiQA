@@ -116,8 +116,9 @@ def generate_answer_candidates(
     # Add the translation of the answer to the desired language to the answer
     # candidates
     translated_answers = [
-        translator.translate(text=cand, target_lang=language)
+        translator.translate(text=cand, target_lang=lang)
         for cand in answer_candidates + [answer]
+        for lang in {language, "en"}
     ]
     answer_candidates.extend(translated_answers)
 
