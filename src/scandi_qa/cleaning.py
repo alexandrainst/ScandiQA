@@ -33,46 +33,29 @@ def clean_question(question: str) -> str:
     return cleaned_question
 
 
-def clean_context(context: str) -> str:
-    """Clean the context of an Natural Questions example.
+def clean_context_or_answer(context_or_answer: Optional[str]) -> str:
+    """Clean the context or answer.
 
     Args:
-        context (str):
-            The context to clean.
+        context_or_answer (str or None):
+            The context or answer to clean.
 
     Returns:
         str:
-            The cleaned context.
+            The cleaned context or answer.
     """
-    # NFKC normalise the context
-    cleaned_context = unicodedata.normalize("NFKC", context)
+    # If the document is None or empty then return an empty string
+    if context_or_answer is None or context_or_answer == "":
+        return ""
+
+    # NFKC normalise the context or answer
+    cleaned = unicodedata.normalize("NFKC", context_or_answer)
 
     # Remove the Wikipedia reference tags from the context
-    cleaned_context = re.sub(r"\[([0-9]+|citation needed)\]", "", cleaned_context)
+    cleaned = re.sub(r"\[([0-9]+|citation needed)\]", "", cleaned)
 
     # Strip context of trailing whitespace and newlines
-    cleaned_context = cleaned_context.strip().strip("\n")
-
-    # Check that the cleaned context is not empty
-    assert len(cleaned_context) > 0
+    cleaned = cleaned.strip().strip("\n")
 
     # Return the cleaned context
-    return cleaned_context
-
-
-def clean_answer(answer: Optional[str]) -> str:
-    """Clean the answer of an MKQA example.
-
-    Args:
-        answer (str or None):
-            The answer to clean.
-
-    Returns:
-        str:
-            The cleaned answer.
-    """
-    # If the answer is None then set it to an empty string
-    clean_answer = "" if answer is None else answer
-
-    # Return the cleaned answer
-    return clean_answer
+    return cleaned

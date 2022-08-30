@@ -14,7 +14,7 @@ from joblib import Parallel, delayed
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer, generate_answer_candidates
-from .cleaning import clean_answer, clean_context, clean_question
+from .cleaning import clean_context_or_answer, clean_question
 from .embedder import Embedder
 from .translation import Translator
 
@@ -83,8 +83,8 @@ class Merger:
         mkqa.question = mkqa.question.map(clean_question)
 
         # Clean the answers
-        mkqa.answer = mkqa.answer.map(clean_answer)
-        mkqa.answer_en = mkqa.answer_en.map(clean_answer)
+        mkqa.answer = mkqa.answer.map(clean_context_or_answer)
+        mkqa.answer_en = mkqa.answer_en.map(clean_context_or_answer)
 
         # Remove the 'queries' and 'answers' columns
         mkqa.drop(columns=["query", "queries", "answers"], inplace=True)
@@ -264,6 +264,42 @@ class Merger:
             # Store the extraction method
             context_extraction_method = "nq_long_answer"
 
+            # Clean the context
+            context_en = clean_context_or_answer(context_en)
+
+            # Extract the answer from the cleaned context, if there was an answer
+            if mkqa_has_answer:
+                answer_dict = extract_answer(
+                    answer=answer_en,
+                    answer_en=None,
+                    context=context_en,
+                    language="en",
+                    translator=self.translator,
+                )
+
+                # If no answer was found then try searching for the language-specific
+                # answer in the English context instead
+                if answer_dict is None:
+                    answer_dict = extract_answer(
+                        answer=answer,
+                        answer_en=None,
+                        context=context_en,
+                        language="en",
+                        translator=self.translator,
+                    )
+
+                # If the answer was still not found then we set the answer to the empty
+                # string
+                if answer_dict is None:
+                    answer_en = ""
+                    answer_start_en = -1
+
+                # Otherwise, we set the answer to the answer found in the cleaned
+                # context
+                else:
+                    answer_en = answer_dict["answer"]
+                    answer_start_en = answer_dict["answer_start"]
+
         # Otherwise, if there is neither a long answer nor an answer in MKQA then use
         # the <p> tag that has the largest cosine similarity with the question as the
         # context
@@ -306,6 +342,9 @@ class Merger:
                 # Store the extraction method
                 context_extraction_method = "candidate_context_no_mkqa_answer"
 
+                # Clean the context
+                context_en = clean_context_or_answer(context_en)
+
         # Otherwise, if there is no long answer but there *is* an answer in MKQA, we
         # extract all the answer candidates from the English version of the MKQA
         # answer, and use the <p>, <span> or <table> tag that contains one of the
@@ -314,88 +353,67 @@ class Merger:
 
             # Get list of answer candidates
             answer_candidates = generate_answer_candidates(
-                answer=answer_en,
+                answer=clean_context_or_answer(answer_en),
                 answer_en=None,
                 language="en",
                 translator=self.translator,
             )
 
-            # Extract all the <p>, <span> and <table> tags in the HTML context which
-            # contain more than 200 characters and which contain a candidate answer
-            soup = BeautifulSoup(html_bytes, "html.parser")
-            context_candidates = [
-                tag.get_text().strip("\n")
-                for tag_name in ["p", "span", "table"]
-                for tag in soup.find_all(tag_name)
-                if len(tag.get_text()) > 200
-                and any(
-                    candidate.lower() in tag.get_text().lower()
-                    for candidate in answer_candidates
-                )
-            ]
+            # We iterate over the answer candidates, starting from the longest one,
+            # and see if we can find a context that contains it
+            for candidate in answer_candidates:
+
+                # Extract all the <p>, <span> and <table> tags in the HTML context
+                # which contain more than 200 characters and which contain a candidate
+                # answer
+                soup = BeautifulSoup(html_bytes, "html.parser")
+                context_candidates = [
+                    clean_context_or_answer(tag.get_text().strip("\n"))
+                    for tag_name in ["p", "span", "table"]
+                    for tag in soup.find_all(tag_name)
+                ]
+                context_candidates = [
+                    ctx_candidate
+                    for ctx_candidate in context_candidates
+                    if len(ctx_candidate) > 200
+                    and candidate.lower() in ctx_candidate.lower()
+                ]
+
+                # If context candidates have been found then we extract the one which
+                # are the most similar to the question
+                if context_candidates:
+
+                    # Get the question
+                    question = example["question"]["text"]
+
+                    # Compute the similarity between the question and all the candidate
+                    # contexts
+                    similarities = self.embedder.similarities(
+                        doc=question,
+                        other_docs=context_candidates,
+                    )
+
+                    # Get the candidate context with the largest similarity
+                    best_idx = similarities.index(max(similarities))  # type: ignore
+                    context_en = context_candidates[best_idx]
+
+                    # Store the extraction method
+                    context_extraction_method = "candidate_context_mkqa_answer"
+
+                    # Store the found answer and its start index
+                    answer_en = candidate
+                    answer_start_en = context_en.lower().index(answer_en.lower())
+
+                    # Break out of the loop, as we successfully found a context
+                    break
 
             # If none of the candidate contexts were found then we discard the
             # example by setting the context to None
-            if len(context_candidates) == 0:
+            else:
                 context_en = None
                 answer_en = None
                 answer_start_en = None
-
-                # Store the extraction method
                 context_extraction_method = "no_candidate_contexts_mkqa_answer"
-
-            # Otherwise, we choose the context candidate with the highest cosine
-            # similarity with the question
-            else:
-
-                # Get the question
-                question = example["question"]["text"]
-
-                # Compute the similarity between the question and all the candidate
-                # contexts
-                similarities = self.embedder.similarities(question, context_candidates)
-
-                # Get the candidate context with the largest similarity
-                best_idx = similarities.index(max(similarities))  # type: ignore
-                context_en = context_candidates[best_idx]
-
-                # Store the extraction method
-                context_extraction_method = "candidate_context_mkqa_answer"
-
-        # Clean the context if it exists
-        if context_en is not None:
-            context_en = clean_context(context_en)
-
-            # Extract the answer from the cleaned context
-            answer_dict = extract_answer(
-                answer=answer_en,
-                answer_en=None,
-                context=context_en,
-                language=self.language,
-                translator=self.translator,
-            )
-
-            # If no answer was found then try searching for the language-specific
-            # answer in the English context instead
-            if answer_dict is None:
-                answer_dict = extract_answer(
-                    answer=answer,
-                    answer_en=answer_en,
-                    context=context_en,
-                    language=self.language,
-                    translator=self.translator,
-                )
-
-            # If the answer was still not found then we set the answer to the empty
-            # string
-            if answer_dict is None:
-                answer_en = ""
-                answer_start_en = -1
-
-            # Otherwise, we set the answer to the answer found in the cleaned context
-            else:
-                answer_en = answer_dict["answer"]
-                answer_start_en = answer_dict["answer_start"]
 
         # Add the example ID, title, context and extraction method to the example
         example["example_id"] = example_id
