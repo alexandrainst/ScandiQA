@@ -197,7 +197,7 @@ class QADatasetBuilder:
         dataset_dict = DatasetDict(
             dict(
                 train=train_dataset,
-                validation=val_dataset,
+                val=val_dataset,
                 test=test_dataset,
             )
         )
