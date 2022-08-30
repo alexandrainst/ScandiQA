@@ -168,7 +168,7 @@ class QADatasetBuilder:
 
         # Split the dataframe without answers into a training split and a val/test split
         val_test_without_answer = df_without_answer.sample(
-            frac=val_test_size_without_answer
+            n=val_test_size_without_answer
         )
         train_without_answer = df_without_answer.drop(val_test_without_answer.index)
 
