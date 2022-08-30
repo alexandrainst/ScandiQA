@@ -133,6 +133,7 @@ class QADatasetBuilder:
 
         # Push the dataset to the Hugging Face Hub
         dataset.push_to_hub(f"scandiqa-{self.language}")
+
         return self
 
     def _translate_context(self, example: pd.Series) -> dict:
@@ -214,6 +215,9 @@ class QADatasetBuilder:
                     if answer_en_dict is not None:
                         example["answer_en"] = answer_en_dict["answer"]
                         example["answer_start_en"] = answer_en_dict["answer_start"]
+
+        # Add the example_id to the example
+        example["example_id"] = example.name
 
         # Return the example as a dictionary
         return example.to_dict()
