@@ -3,7 +3,7 @@
 import gzip
 import multiprocessing as mp
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 import pandas as pd
 import requests
@@ -249,7 +249,8 @@ class Merger:
         # example
         answer_en = self.mkqa.loc[example_id, "answer_en"]
         answer = self.mkqa.loc[example_id, "answer"]
-        mkqa_has_answer = answer_en is not None
+        answer_start_en: Optional[int] = -1
+        mkqa_has_answer = answer_en is not None and answer_en != ""
 
         # If the long answer exists then use this as the context
         if has_long_answer:
