@@ -4,17 +4,16 @@ import os
 from typing import Dict
 
 import hydra
-from datasets import load_dataset, load_metric
+from datasets import DownloadMode
+from datasets.load import load_dataset, load_metric
 from omegaconf import DictConfig
-from transformers import (
-    AutoModelForQuestionAnswering,
-    AutoTokenizer,
-    DefaultDataCollator,
-    EarlyStoppingCallback,
-    EvalPrediction,
-    Trainer,
-    TrainingArguments,
-)
+from transformers.data.data_collator import DefaultDataCollator
+from transformers.models.auto.modeling_auto import AutoModelForQuestionAnswering
+from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers.trainer import Trainer
+from transformers.trainer_callback import EarlyStoppingCallback
+from transformers.trainer_utils import EvalPrediction
+from transformers.training_args import TrainingArguments
 
 
 @hydra.main(config_path="../../config", config_name="config", version_base=None)
@@ -34,6 +33,7 @@ def train_model(config: DictConfig) -> None:
         "alexandrainst/scandiqa",
         config.language,
         use_auth_token=True,
+        download_mode=DownloadMode.FORCE_REDOWNLOAD,
     )
 
     # Create the tokeniser
@@ -58,53 +58,70 @@ def train_model(config: DictConfig) -> None:
             max_length=384,
             truncation="only_second",
             return_offsets_mapping=True,
-            padding="max_length",
+            padding=config.model.padding,
         )
 
-        offset_mapping = inputs.pop("offset_mapping")
-        answers = examples["answers"]["text"]
-        answer_starts = examples["answers"]["answer_start"]
-        start_positions = []
-        end_positions = []
+        offsets = inputs.pop("offset_mapping")
 
-        for i, offset in enumerate(offset_mapping):
-            answer = answers[i]
-            start_char = answer_starts[0]
-            end_char = start_char + len(answer)
-            sequence_ids = inputs.sequence_ids(i)
+        inputs["start_positions"] = list()
+        inputs["end_positions"] = list()
 
-            # Find the start and end of the context
-            idx = 0
-            while sequence_ids[idx] != 1:
-                idx += 1
-            context_start = idx
-            while sequence_ids[idx] == 1:
-                idx += 1
-            context_end = idx - 1
+        # We will label impossible answers with the index of the CLS token.
+        input_ids = inputs["input_ids"]
+        cls_index = input_ids.index(tokenizer.cls_token_id)
 
-            # If the answer is not fully inside the context, label it (0, 0)
-            if (
-                offset[context_start][0] > end_char
-                or offset[context_end][1] < start_char
+        # Grab the sequence corresponding to that example (to know what is the
+        # context and what is the question).
+        sequence_ids = inputs.sequence_ids()
+
+        # Get the answers
+        answers = examples["answers"]
+
+        # If no answers are given, set the cls_index as answer.
+        if len(answers["answer_start"]) == 0:
+            inputs["start_positions"].append(cls_index)
+            inputs["end_positions"].append(cls_index)
+        else:
+            # Start/end character index of the answer in the text.
+            start_char = answers["answer_start"][0]
+            end_char = start_char + len(answers["text"][0])
+
+            # Start token index of the current span in the text.
+            token_start_index = 0
+            while sequence_ids[token_start_index] != 1:
+                token_start_index += 1
+
+            # End token index of the current span in the text.
+            token_end_index = len(input_ids) - 1
+            while sequence_ids[token_end_index] != 1:
+                token_end_index -= 1
+
+            # Detect if the answer is out of the span (in which case this feature
+            # is labeled with the CLS index).
+            if not (
+                offsets[token_start_index][0] <= start_char
+                and offsets[token_end_index][1] >= end_char
             ):
-                start_positions.append(0)
-                end_positions.append(0)
+                inputs["start_positions"].append(cls_index)
+                inputs["end_positions"].append(cls_index)
+
+            # Otherwise move the token_start_index and token_end_index to the two
+            # ends of the answer. Note: we could go after the last offset if the
+            # answer is the last word (edge case).
             else:
-                # Otherwise it's the start and end token positions
-                idx = context_start
-                while idx <= context_end and offset[idx][0] <= start_char:
-                    idx += 1
-                start_positions.append(idx - 1)
+                while (
+                    token_start_index < len(offsets)
+                    and offsets[token_start_index][0] <= start_char
+                ):
+                    token_start_index += 1
+                inputs["start_positions"].append(token_start_index - 1)
+                while offsets[token_end_index][1] >= end_char:
+                    token_end_index -= 1
+                inputs["end_positions"].append(token_end_index + 1)
 
-                idx = context_end
-                while idx >= context_start and offset[idx][1] >= end_char:
-                    idx -= 1
-                end_positions.append(idx + 1)
-
-        inputs["start_positions"] = start_positions
-        inputs["end_positions"] = end_positions
         return inputs
 
+    # Apply the preprocessing
     dataset_dict = dataset_dict.map(preprocess_function)
 
     # Initialise the metrics
