@@ -26,7 +26,7 @@ def train_model(config: DictConfig) -> None:
             Configuration object.
     """
     # Deal with full determinism
-    if config.transformer_model.full_determinism:
+    if config.model.full_determinism:
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = "4096:8"
 
     # Load the data
