@@ -186,15 +186,12 @@ def extract_answer(
         candidate.lower() in context.lower() for candidate in answer_candidates
     )
 
-    # If none of the answer candidates appear in the translated context then we return
-    # None
+    # If none of the answer candidates appear in the context then we return None
     if not has_answer:
         return None
 
     # Otherwise, we extract the answer and answer index from the context
     else:
-
-        orig_answer = answer
 
         # Extract the answer candidate appearing in the context
         answer = next(
@@ -208,15 +205,6 @@ def extract_answer(
 
         # Use the index to extract the answer with correct casing from the context
         answer = context[answer_idx : answer_idx + len(answer)]
-
-        if orig_answer != answer:
-            print()
-            print("=============")
-            print(f"Answer conversion: {orig_answer} --> {answer}")
-            print(f"Answer candidates: {answer_candidates}")
-            print(f"Context: {context}")
-            print("=============")
-            print()
 
         # Return the answer and answer index
         return dict(answer=answer, answer_start=answer_idx)
