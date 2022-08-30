@@ -1,0 +1,9 @@
+defaults:
+  - model: electra
+  - _self_
+
+models:
+  dir: models
+
+language: da
+seed: 4242
