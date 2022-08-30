@@ -450,6 +450,39 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "evaluate"
+version = "0.2.2"
+description = "HuggingFace community-driven open-source library of evaluation"
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+
+[package.dependencies]
+datasets = ">=2.0.0"
+dill = "*"
+fsspec = {version = ">=2021.05.0", extras = ["http"]}
+huggingface-hub = ">=0.7.0"
+multiprocess = "*"
+numpy = ">=1.17"
+packaging = "*"
+pandas = "*"
+requests = ">=2.19.0"
+responses = "<0.19"
+tqdm = ">=4.62.1"
+xxhash = "*"
+
+[package.extras]
+torch = ["torch"]
+tests = ["six (>=1.15.0,<1.16.0)", "Werkzeug (>=1.0.1)", "texttable (>=1.6.3)", "tldextract (>=3.1.0)", "requests-file (>=1.5.1)", "toml (>=0.10.1)", "trectools", "mauve-text", "transformers", "sentencepiece", "jiwer", "scikit-learn", "seqeval", "scipy", "sacremoses", "sacrebleu", "rouge-score (<0.0.7)", "bert-score (>=0.3.6)", "torch", "tensorflow (>=2.3,!=2.6.0,!=2.6.1)", "pytest-xdist", "pytest-datadir", "pytest", "absl-py"]
+tensorflow_gpu = ["tensorflow-gpu (>=2.2.0,!=2.6.0,!=2.6.1)"]
+tensorflow = ["tensorflow (>=2.2.0,!=2.6.0,!=2.6.1)"]
+template = ["cookiecuttergradio (>=3.0.0)"]
+quality = ["pyyaml (>=5.3.1)", "isort (>=5.0.0)", "flake8 (>=3.8.3)", "black (>=22.0,<23.0)"]
+evaluator = ["scipy (>=1.7.1)", "transformers"]
+docs = ["s3fs"]
+dev = ["pyyaml (>=5.3.1)", "isort (>=5.0.0)", "flake8 (>=3.8.3)", "black (>=22.0,<23.0)", "six (>=1.15.0,<1.16.0)", "Werkzeug (>=1.0.1)", "texttable (>=1.6.3)", "tldextract (>=3.1.0)", "requests-file (>=1.5.1)", "toml (>=0.10.1)", "trectools", "mauve-text", "transformers", "sentencepiece", "jiwer", "scikit-learn", "seqeval", "scipy", "sacremoses", "sacrebleu", "rouge-score (<0.0.7)", "bert-score (>=0.3.6)", "torch", "tensorflow (>=2.3,!=2.6.0,!=2.6.1)", "pytest-xdist", "pytest-datadir", "pytest", "absl-py"]
+
+[[package]]
 name = "execnet"
 version = "1.9.0"
 description = "execnet: rapid multi-Python deployment"
@@ -2299,7 +2332,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8,<3.11"
-content-hash = "6ed774c4a7431a5c3800a802055333aa91ae6b3a49e24e83fae3247666a1225e"
+content-hash = "78fe2591d350c838d1aee7c86cdc22bcd937ccf63824f3e71c001b85e39ac655"
 
 [metadata.files]
 aiohttp = [
@@ -2624,6 +2657,10 @@ docopt = [
 entrypoints = [
     {file = "entrypoints-0.4-py3-none-any.whl", hash = "sha256:f174b5ff827504fd3cd97cc3f8649f3693f51538c7e4bdf3ef002c8429d42f9f"},
     {file = "entrypoints-0.4.tar.gz", hash = "sha256:b706eddaa9218a19ebcd67b56818f05bb27589b1ca9e8d797b74affad4ccacd4"},
+]
+evaluate = [
+    {file = "evaluate-0.2.2-py3-none-any.whl", hash = "sha256:e05ea794f4359adffb349f497eefe26c0b59c945b37f18b9f79ddade3c89f13c"},
+    {file = "evaluate-0.2.2.tar.gz", hash = "sha256:497601669ef7a7694a9fa053529ea9959b4aeeeb270e9e44df2ea0e084b936f0"},
 ]
 execnet = []
 executing = [
