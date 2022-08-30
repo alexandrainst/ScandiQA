@@ -3,6 +3,7 @@
 import os
 from typing import Dict
 
+import evaluate
 import hydra
 from datasets import DownloadMode
 from datasets.load import load_dataset, load_metric
@@ -126,33 +127,12 @@ def train_model(config: DictConfig) -> None:
     # Apply the preprocessing
     dataset_dict = dataset_dict.map(preprocess_function)
 
-    # Initialise the metrics
-    em_metric = load_metric("exact_match")
-    f1_metric = load_metric("f1")
+    # Initialise the metric
+    metric = evaluate.load("squad_v2")
 
     # Create the `compute_metrics` function
-    def compute_metrics(predictions_and_labels: EvalPrediction) -> Dict[str, float]:
-        """Compute the metrics for the transformer model.
-
-        Args:
-            predictions_and_labels (EvalPrediction):
-                A tuple of predictions and labels.
-
-        Returns:
-            Dict[str, float]:
-                The metrics.
-        """
-        # Extract the predictions
-        predictions, labels = predictions_and_labels
-        predictions = predictions.argmax(axis=-1)
-
-        # Compute the metrics
-        em = em_metric.compute(predictions=predictions, references=labels)[
-            "exact_match"
-        ]
-        f1 = f1_metric.compute(predictions=predictions, references=labels)["f1"]
-
-        return dict(em=em, f1=f1)
+    def compute_metrics(p: EvalPrediction) -> Dict[str, float]:
+        return metric.compute(predictions=p.predictions, references=p.label_ids)
 
     # Create early stopping callback
     early_stopping_callback = EarlyStoppingCallback(
