@@ -73,12 +73,13 @@ class QADatasetBuilder:
             cache_dir=self.cache_dir,
         )
 
-    def build(self) -> pd.DataFrame:
+    def build(self) -> Dict[str, pd.DataFrame]:
         """Builds the dataset and pushes it to the Hugging Face Hub.
 
         Returns:
-            Pandas DataFrame:
-                The resulting dataset for the given language.
+            dict of Pandas DataFrames:
+                The resulting dataset for the given language, with keys "train",
+                "val" and "test".
         """
         # Set up the path to the merged dataset
         merged_path = Path("data") / "processed" / f"merged_{self.language}.parquet"
@@ -104,7 +105,8 @@ class QADatasetBuilder:
             path = data_dir / self.language / f"{split}.jsonl"
             dataset.to_json(path, orient="records", lines=True)
 
-        return df
+        # Return the dataset
+        return dataset_dict
 
     def translate_contexts(self, df: pd.DataFrame) -> pd.DataFrame:
         """Translates the English contexts of the MKQA dataset.
