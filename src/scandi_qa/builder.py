@@ -193,11 +193,6 @@ class QADatasetBuilder:
         val_dataset = Dataset.from_pandas(val)
         test_dataset = Dataset.from_pandas(test)
 
-        # Remove the index column from the datasets
-        train_dataset = train_dataset.remove_columns("__index_level_0__")
-        val_dataset = val_dataset.remove_columns("__index_level_0__")
-        test_dataset = test_dataset.remove_columns("__index_level_0__")
-
         # Create a DatasetDict
         dataset_dict = DatasetDict(
             dict(
