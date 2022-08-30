@@ -7,7 +7,7 @@ import hydra
 from datasets import DownloadMode
 from datasets.load import load_dataset, load_metric
 from omegaconf import DictConfig
-from transformers.data.data_collator import DefaultDataCollator
+from transformers.data.data_collator import DataCollatorWithPadding
 from transformers.models.auto.modeling_auto import AutoModelForQuestionAnswering
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 from transformers.trainer import Trainer
@@ -40,7 +40,9 @@ def train_model(config: DictConfig) -> None:
     tokenizer = AutoTokenizer.from_pretrained(config.model.model_id)
 
     # Create data collator
-    data_collator = DefaultDataCollator()
+    data_collator = DataCollatorWithPadding(
+        tokenizer=tokenizer, padding=config.model.padding
+    )
 
     # Create the model
     model = AutoModelForQuestionAnswering.from_pretrained(
