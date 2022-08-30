@@ -3,7 +3,7 @@
 from pathlib import Path
 
 import pandas as pd
-from datasets import Dataset
+from datasets import Dataset, DatasetDict
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer
@@ -18,6 +18,10 @@ class QADatasetBuilder:
     Args:
         language (str, optional):
             The two-character language code of the dataset. Defaults to "da".
+        val_size (int, optional):
+            The size of the validation set. Defaults to 750.
+        test_size (int, optional):
+            The size of the test set. Defaults to 750.
         cache_dir (str, optional):
             The directory to cache the dataset. Defaults to
             '~/.cache/huggingface/datasets'.
@@ -38,7 +42,11 @@ class QADatasetBuilder:
     """
 
     def __init__(
-        self, language: str = "da", cache_dir: str = "~/.cache/huggingface/datasets"
+        self,
+        language: str = "da",
+        val_size: int = 750,
+        test_size: int = 750,
+        cache_dir: str = "~/.cache/huggingface/datasets",
     ):
         # If the language is not supported, raise an error
         if language not in MKQA_LANGUAGES:
@@ -48,6 +56,8 @@ class QADatasetBuilder:
             )
 
         self.language = language
+        self.val_size = val_size
+        self.test_size = test_size
         self.cache_dir = cache_dir
 
         # Set up translator, depending on the language
@@ -85,8 +95,11 @@ class QADatasetBuilder:
         # Translate the English contexts
         df = self.translate_contexts(df)
 
+        # Split into train, validation and test sets
+        dataset_dict = self.split_dataset(df)
+
         # Push to the Hub
-        self.push_to_hub(df)
+        dataset_dict.push_to_hub(f"scandiqa-{self.language}")
 
         return df
 
@@ -118,23 +131,84 @@ class QADatasetBuilder:
         # Return the translated dataset
         return translated_df
 
-    def push_to_hub(self, df: pd.DataFrame):
-        """Pushes the dataset to the Hugging Face Hub.
+    def split_dataset(self, df: pd.DataFrame) -> DatasetDict:
+        """Splits the dataset into train, validation and test sets.
+
+        The dataset is split based on a stratification on whether an answer exists, to
+        ensure that every split has roughly the same amount of questions without an
+        answer.
 
         Args:
             df (pd.DataFrame):
-                The dataset to push to the Hugging Face Hub.
+                The merged dataset from MKQA and NQ.
+
+        Returns:
+            DatasetDict:
+                The dataset split into train, validation and test sets.
         """
-        # Convert the dataframe to a Hugging Face Dataset object
-        dataset = Dataset.from_pandas(df)
+        # Split the dataframe into one with and one without answers
+        df_with_answer = df.query("answer != ''")
+        df_without_answer = df.query("answer == ''")
 
-        # Drop the index column
-        dataset = dataset.remove_columns("__index_level_0__")
+        # Get the proportion of questions with an answer
+        proportion_with_answer = len(df_with_answer) / len(df)
+        proportion_without_answer = 1 - proportion_with_answer
 
-        # Push the dataset to the Hugging Face Hub
-        dataset.push_to_hub(f"scandiqa-{self.language}")
+        # Split the dataframe with answers into a training split and a val/test split
+        val_test_with_answer = df_with_answer.sample(frac=proportion_with_answer)
+        train_with_answer = df_with_answer.drop(val_test_with_answer.index)
 
-        return self
+        # Split the dataframe without answers into a training split and a val/test split
+        val_test_without_answer = df_without_answer.sample(
+            frac=proportion_without_answer
+        )
+        train_without_answer = df_without_answer.drop(val_test_without_answer.index)
+
+        # Get the proportion of validation samples in the val/test split
+        proportion_val = self.val_size / (self.val_size + self.test_size)
+
+        # Split the val_test split with answers into a validation and a test split
+        val_with_answer = val_test_with_answer.sample(frac=proportion_val)
+        test_with_answer = val_test_with_answer.drop(val_with_answer.index)
+
+        # Split the val_test split without answers into a validation and a test split
+        val_without_answer = val_test_without_answer.sample(frac=proportion_val)
+        test_without_answer = val_test_without_answer.drop(val_without_answer.index)
+
+        # Concatenate the training, validation and test splits
+        train = pd.concat([train_with_answer, train_without_answer])
+        val = pd.concat([val_with_answer, val_without_answer])
+        test = pd.concat([test_with_answer, test_without_answer])
+
+        # Reset the indices of the splits
+        train.reset_index(drop=True, inplace=True)
+        val.reset_index(drop=True, inplace=True)
+        test.reset_index(drop=True, inplace=True)
+
+        # Shuffle the training set
+        train = train.sample(frac=1).reset_index(drop=True)
+
+        # Convert the splits to Hugging Face datasets
+        train_dataset = Dataset.from_pandas(train)
+        val_dataset = Dataset.from_pandas(val)
+        test_dataset = Dataset.from_pandas(test)
+
+        # Remove the index column from the datasets
+        train_dataset = train_dataset.remove_columns("__index_level_0__")
+        val_dataset = val_dataset.remove_columns("__index_level_0__")
+        test_dataset = test_dataset.remove_columns("__index_level_0__")
+
+        # Create a DatasetDict
+        dataset_dict = DatasetDict(
+            dict(
+                train=train_dataset,
+                validation=val_dataset,
+                test=test_dataset,
+            )
+        )
+
+        # Return the DatasetDict
+        return dataset_dict
 
     def _translate_context(self, example: pd.Series) -> dict:
         """Translate the English context to the target language.
