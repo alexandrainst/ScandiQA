@@ -1,9 +1,9 @@
 """Loading and processing of data."""
 
 from pathlib import Path
+from typing import Dict
 
 import pandas as pd
-from datasets import Dataset, DatasetDict
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer
@@ -98,8 +98,11 @@ class QADatasetBuilder:
         # Split into train, validation and test sets
         dataset_dict = self.split_dataset(df)
 
-        # Push to the Hub
-        dataset_dict.push_to_hub(f"scandiqa-{self.language}")
+        # Store as JSONL files
+        data_dir = Path("data") / "final" / "scandiqa-dataset" / "data"
+        for split, dataset in dataset_dict.items():
+            path = data_dir / self.language / f"{split}.jsonl"
+            dataset.to_json(path, orient="records", lines=True)
 
         return df
 
@@ -131,7 +134,7 @@ class QADatasetBuilder:
         # Return the translated dataset
         return translated_df
 
-    def split_dataset(self, df: pd.DataFrame) -> DatasetDict:
+    def split_dataset(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
         """Splits the dataset into train, validation and test sets.
 
         The dataset is split based on a stratification on whether an answer exists, to
@@ -143,8 +146,8 @@ class QADatasetBuilder:
                 The merged dataset from MKQA and NQ.
 
         Returns:
-            DatasetDict:
-                The dataset split into train, validation and test sets.
+            dict of Pandas Dataframes:
+                The train, validation and test sets.
         """
         # Split the dataframe into one with and one without answers
         df_with_answer = df.query("answer != ''")
@@ -196,22 +199,8 @@ class QADatasetBuilder:
         # Shuffle the training set
         train = train.sample(frac=1).reset_index(drop=True)
 
-        # Convert the splits to Hugging Face datasets
-        train_dataset = Dataset.from_pandas(train)
-        val_dataset = Dataset.from_pandas(val)
-        test_dataset = Dataset.from_pandas(test)
-
-        # Create a DatasetDict
-        dataset_dict = DatasetDict(
-            dict(
-                train=train_dataset,
-                val=val_dataset,
-                test=test_dataset,
-            )
-        )
-
-        # Return the DatasetDict
-        return dataset_dict
+        # Return a dictionary with the splits
+        return dict(train=train, val=val, test=test)
 
     def _translate_context(self, example: pd.Series) -> dict:
         """Translate the English context to the target language.
