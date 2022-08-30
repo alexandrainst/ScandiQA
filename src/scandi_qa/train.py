@@ -9,7 +9,7 @@ from omegaconf import DictConfig
 from transformers import (
     AutoModelForQuestionAnswering,
     AutoTokenizer,
-    DataCollatorWithPadding,
+    DefaultDataCollator,
     EarlyStoppingCallback,
     EvalPrediction,
     Trainer,
@@ -40,9 +40,7 @@ def train_model(config: DictConfig) -> None:
     tokenizer = AutoTokenizer.from_pretrained(config.model.model_id)
 
     # Create data collator
-    data_collator = DataCollatorWithPadding(
-        tokenizer=tokenizer, padding=config.model.padding
-    )
+    data_collator = DefaultDataCollator()
 
     # Create the model
     model = AutoModelForQuestionAnswering.from_pretrained(
@@ -52,12 +50,62 @@ def train_model(config: DictConfig) -> None:
         cache_dir=".cache",
     )
 
-    # Tokenise the data
-    def tokenise(examples: dict) -> dict:
-        doc = examples["text"]
-        return tokenizer(doc, truncation=True, padding=True)
+    # Preprocess the data
+    def preprocess_function(examples):
+        inputs = tokenizer(
+            examples["question"],
+            examples["context"],
+            max_length=384,
+            truncation="only_second",
+            return_offsets_mapping=True,
+            padding="max_length",
+        )
 
-    dataset_dict = dataset_dict.map(tokenise)
+        offset_mapping = inputs.pop("offset_mapping")
+        answers = examples["answers"]["text"]
+        answer_starts = examples["answers"]["answer_start"]
+        start_positions = []
+        end_positions = []
+
+        for i, offset in enumerate(offset_mapping):
+            answer = answers[i]
+            start_char = answer_starts[0]
+            end_char = start_char + len(answer)
+            sequence_ids = inputs.sequence_ids(i)
+
+            # Find the start and end of the context
+            idx = 0
+            while sequence_ids[idx] != 1:
+                idx += 1
+            context_start = idx
+            while sequence_ids[idx] == 1:
+                idx += 1
+            context_end = idx - 1
+
+            # If the answer is not fully inside the context, label it (0, 0)
+            if (
+                offset[context_start][0] > end_char
+                or offset[context_end][1] < start_char
+            ):
+                start_positions.append(0)
+                end_positions.append(0)
+            else:
+                # Otherwise it's the start and end token positions
+                idx = context_start
+                while idx <= context_end and offset[idx][0] <= start_char:
+                    idx += 1
+                start_positions.append(idx - 1)
+
+                idx = context_end
+                while idx >= context_start and offset[idx][1] >= end_char:
+                    idx -= 1
+                end_positions.append(idx + 1)
+
+        inputs["start_positions"] = start_positions
+        inputs["end_positions"] = end_positions
+        return inputs
+
+    dataset_dict = dataset_dict.map(preprocess_function)
 
     # Initialise the metrics
     em_metric = load_metric("exact_match")
