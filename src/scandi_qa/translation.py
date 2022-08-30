@@ -74,8 +74,9 @@ class Translator(ABC):
             except RequestException:
                 time.sleep(1)
 
-        # If we sent too many requests then wait a second and try again
-        while response.status_code == 429:
+        # If we sent too many requests or if the service is down, then wait a second
+        # and try again
+        while response.status_code in [429, 503]:
             time.sleep(1)
             response = self._get_response(text=text, target_lang=target_lang)
 
