@@ -154,13 +154,21 @@ class QADatasetBuilder:
         proportion_with_answer = len(df_with_answer) / len(df)
         proportion_without_answer = 1 - proportion_with_answer
 
+        # Compute the number of val/test samples for answers/no answers
+        val_test_size_with_answer = int(
+            (self.val_size + self.test_size) * proportion_with_answer
+        )
+        val_test_size_without_answer = int(
+            (self.val_size + self.test_size) * proportion_without_answer
+        )
+
         # Split the dataframe with answers into a training split and a val/test split
-        val_test_with_answer = df_with_answer.sample(frac=proportion_with_answer)
+        val_test_with_answer = df_with_answer.sample(n=val_test_size_with_answer)
         train_with_answer = df_with_answer.drop(val_test_with_answer.index)
 
         # Split the dataframe without answers into a training split and a val/test split
         val_test_without_answer = df_without_answer.sample(
-            frac=proportion_without_answer
+            frac=val_test_size_without_answer
         )
         train_without_answer = df_without_answer.drop(val_test_without_answer.index)
 
