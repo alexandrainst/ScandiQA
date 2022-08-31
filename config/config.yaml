@@ -1,9 +1,9 @@
 defaults:
   - model: electra
+  - training: standard
   - _self_
 
-models:
-  dir: models
+models_dir: models
 
 language: da
 seed: 4242
