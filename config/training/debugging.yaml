@@ -1,5 +1,5 @@
 # Training hyperparameters
-max_steps: 500_000
+max_steps: 50_000
 batch_size: 32
 gradient_accumulation_steps: 1
 learning_rate: 2e-5
