@@ -97,3 +97,6 @@ data/
 
 # Dataset repository
 src/dataset_repo
+
+# Models
+models/
