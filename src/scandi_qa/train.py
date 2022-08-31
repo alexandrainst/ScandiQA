@@ -210,7 +210,7 @@ def train_model(config: DictConfig) -> None:
     )
 
     # Train the model
-    trainer.train()
+    trainer.train(resume_from_checkpoint=config.training.resume_from_checkpoint)
 
     # Save the model
     trainer.save_model()

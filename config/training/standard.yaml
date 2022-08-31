@@ -10,6 +10,7 @@ full_determinism: True
 fp16: True
 early_stopping_patience: 3
 max_answer_length: 30
+resume_from_checkpoint: False
 
 # Evaluation
 evaluation_strategy: steps
