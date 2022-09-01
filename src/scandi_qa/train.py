@@ -162,14 +162,6 @@ def train_model(config: DictConfig) -> None:
     # Set up output directory
     output_dir = f"{config.models_dir}/{config.model.name}"
 
-    # Check if MPS device is available
-    if torch.cuda.is_available():
-        mps = False
-    elif torch.backends.mps.is_available():
-        mps = True
-    else:
-        mps = False
-
     # Create the training arguments
     training_args = TrainingArguments(
         output_dir=output_dir,
@@ -195,7 +187,6 @@ def train_model(config: DictConfig) -> None:
         metric_for_best_model="loss",
         greater_is_better=False,
         load_best_model_at_end=True,
-        use_mps_device=mps,
     )
 
     # Create the trainer
