@@ -1,6 +1,5 @@
 defaults:
   - model: electra
-  - training: standard
   - _self_
 
 models_dir: models
