@@ -24,7 +24,7 @@ def train_model(config: DictConfig) -> None:
             Configuration object.
     """
     # Deal with full determinism
-    if config.training.full_determinism:
+    if config.model.full_determinism:
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = "4096:8"
 
     # Load the data
@@ -156,7 +156,7 @@ def train_model(config: DictConfig) -> None:
 
     # Create early stopping callback
     early_stopping_callback = EarlyStoppingCallback(
-        early_stopping_patience=config.training.early_stopping_patience
+        early_stopping_patience=config.model.early_stopping_patience
     )
 
     # Set up output directory
@@ -173,25 +173,25 @@ def train_model(config: DictConfig) -> None:
     # Create the training arguments
     training_args = TrainingArguments(
         output_dir=output_dir,
-        evaluation_strategy=config.training.evaluation_strategy,
-        logging_strategy=config.training.logging_strategy,
-        save_strategy=config.training.save_strategy,
-        eval_steps=config.training.eval_steps,
-        logging_steps=config.training.logging_steps,
-        save_steps=config.training.save_steps,
-        max_steps=config.training.max_steps,
-        report_to=config.training.report_to,
-        save_total_limit=config.training.save_total_limit,
-        per_device_train_batch_size=config.training.batch_size,
-        per_device_eval_batch_size=config.training.batch_size,
-        learning_rate=config.training.learning_rate,
-        warmup_ratio=config.training.warmup_ratio,
-        gradient_accumulation_steps=config.training.gradient_accumulation_steps,
-        optim=config.training.optim,
+        evaluation_strategy=config.model.evaluation_strategy,
+        logging_strategy=config.model.logging_strategy,
+        save_strategy=config.model.save_strategy,
+        eval_steps=config.model.eval_steps,
+        logging_steps=config.model.logging_steps,
+        save_steps=config.model.save_steps,
+        max_steps=config.model.max_steps,
+        report_to=config.model.report_to,
+        save_total_limit=config.model.save_total_limit,
+        per_device_train_batch_size=config.model.batch_size,
+        per_device_eval_batch_size=config.model.batch_size,
+        learning_rate=config.model.learning_rate,
+        warmup_ratio=config.model.warmup_ratio,
+        gradient_accumulation_steps=config.model.gradient_accumulation_steps,
+        optim=config.model.optim,
         seed=config.seed,
-        full_determinism=config.training.full_determinism,
-        lr_scheduler_type=config.training.lr_scheduler_type,
-        fp16=config.training.fp16,
+        full_determinism=config.model.full_determinism,
+        lr_scheduler_type=config.model.lr_scheduler_type,
+        fp16=config.model.fp16,
         metric_for_best_model="loss",
         greater_is_better=False,
         load_best_model_at_end=True,
@@ -210,7 +210,7 @@ def train_model(config: DictConfig) -> None:
     )
 
     # Train the model
-    trainer.train(resume_from_checkpoint=config.training.resume_from_checkpoint)
+    trainer.train(resume_from_checkpoint=config.model.resume_from_checkpoint)
 
     # Save the model
     trainer.save_model()
