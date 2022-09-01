@@ -1,20 +1,13 @@
 """Train a question answering model on the ScandiQA dataset."""
 
-from hydra import compose, initialize
+import hydra
+from omegaconf import DictConfig
 
 from scandi_qa.train import train_model
 
-# Initialise Hydra
-initialize(config_path="../../config", version_base=None)
 
-
-def main():
-    """Train a question answering model on the ScandiQA dataset."""
-
-    # Build config
-    config = compose("config")
-
-    # Train the model
+@hydra.main(config_path="../../config", config_name="config", version_base=None)
+def main(config: DictConfig):
     train_model(config)
 
 
