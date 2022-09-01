@@ -4,6 +4,8 @@ import os
 
 import hydra
 from datasets import DownloadMode
+from datasets.combine import concatenate_datasets
+from datasets.dataset_dict import DatasetDict
 from datasets.load import load_dataset
 from omegaconf import DictConfig
 from transformers.data.data_collator import default_data_collator
@@ -26,13 +28,31 @@ def train_model(config: DictConfig) -> None:
     if config.model.full_determinism:
         os.environ["CUBLAS_WORKSPACE_CONFIG"] = "4096:8"
 
+    if config.language == "all":
+        languages = ["da", "sv", "no"]
+    else:
+        languages = [config.language]
+
     # Load the data
-    dataset_dict = load_dataset(
-        "alexandrainst/scandiqa",
-        config.language,
-        use_auth_token=True,
-        download_mode=DownloadMode.FORCE_REDOWNLOAD,
-        cache_dir=".cache",
+    dataset_dicts = list()
+    for language in languages:
+        dataset_dict = load_dataset(
+            "alexandrainst/scandiqa",
+            language,
+            use_auth_token=True,
+            download_mode=DownloadMode.FORCE_REDOWNLOAD,
+            cache_dir=".cache",
+        )
+        dataset_dicts.append(dataset_dict)
+
+    # Collect the data
+    dataset_dict = DatasetDict(
+        {
+            split: concatenate_datasets(
+                [dataset_dict[split] for dataset_dict in dataset_dicts]
+            )
+            for split in ["train", "val", "test"]
+        }
     )
 
     # Create the tokeniser
@@ -159,7 +179,7 @@ def train_model(config: DictConfig) -> None:
     )
 
     # Set up output directory
-    output_dir = f"{config.models_dir}/{config.model.name}"
+    output_dir = f"{config.models_dir}/{config.model.name}-{config.language}"
 
     # Create the training arguments
     training_args = TrainingArguments(
