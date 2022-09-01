@@ -3,7 +3,6 @@
 import os
 
 import hydra
-import torch
 from datasets import DownloadMode
 from datasets.load import load_dataset
 from omegaconf import DictConfig
