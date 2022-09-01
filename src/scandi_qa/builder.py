@@ -100,7 +100,7 @@ class QADatasetBuilder:
         dataset_dict = self.split_dataset(df)
 
         # Store as JSONL files
-        data_dir = Path("data") / "final" / "scandiqa-dataset" / "data"
+        data_dir = Path("src") / "dataset_repo" / "data"
         for split, dataset in dataset_dict.items():
             path = data_dir / self.language / f"{split}.jsonl"
             dataset.to_json(path, orient="records", lines=True)
