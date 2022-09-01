@@ -1,0 +1,10 @@
+# Model
+name: xlmr-base
+model_id: xlm-roberta-base
+from_flax: False
+use_auth_token: False
+
+# Tokenizer
+padding: longest
+max_length: 384
+stride: 128

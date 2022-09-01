@@ -1,0 +1,10 @@
+# Model
+name: nbailab-bert-base
+model_id: NbAiLab/nb-bert-base
+from_flax: False
+use_auth_token: False
+
+# Tokenizer
+padding: longest
+max_length: 384
+stride: 128
