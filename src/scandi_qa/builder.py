@@ -19,9 +19,9 @@ class QADatasetBuilder:
         language (str, optional):
             The two-character language code of the dataset. Defaults to "da".
         val_size (int, optional):
-            The size of the validation set. Defaults to 750.
+            The size of the validation set. Defaults to 500.
         test_size (int, optional):
-            The size of the test set. Defaults to 750.
+            The size of the test set. Defaults to 500.
         cache_dir (str, optional):
             The directory to cache the dataset. Defaults to
             '~/.cache/huggingface/datasets'.
@@ -44,8 +44,8 @@ class QADatasetBuilder:
     def __init__(
         self,
         language: str = "da",
-        val_size: int = 750,
-        test_size: int = 750,
+        val_size: int = 500,
+        test_size: int = 500,
         cache_dir: str = "~/.cache/huggingface/datasets",
     ):
         # If the language is not supported, raise an error
