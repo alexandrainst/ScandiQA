@@ -1,0 +1,38 @@
+# Model
+name: xlmr-large-qa-sv
+model_id: m3hrdadfi/xlmr-large-qa-sv
+from_flax: False
+use_auth_token: False
+
+# Tokenizer
+padding: longest
+max_length: 384
+stride: 128
+
+# Training hyperparameters
+max_steps: 50_000
+batch_size: 32
+gradient_accumulation_steps: 1
+learning_rate: 2e-5
+lr_scheduler_type: linear
+warmup_ratio: 0.01
+optim: adamw_torch
+full_determinism: True
+fp16: True
+early_stopping_patience: 20
+max_answer_length: 30
+resume_from_checkpoint: False
+
+# Evaluation
+evaluation_strategy: steps
+eval_steps: 200
+
+# Logging
+logging_strategy: steps
+logging_steps: 50
+report_to: none
+
+# Model saving
+save_strategy: steps
+save_steps: 200
+save_total_limit: 1
