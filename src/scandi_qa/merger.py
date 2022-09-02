@@ -8,7 +8,7 @@ from typing import Optional, Union
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from datasets import load_dataset
+from datasets import Dataset, load_dataset
 from datasets.arrow_dataset import Example
 from joblib import Parallel, delayed
 from tqdm.auto import tqdm
@@ -49,11 +49,14 @@ class Merger:
         self.language = language
         self.cache_dir = cache_dir
         self.mkqa = self.build_mkqa()
-        self.nq = load_dataset(
-            "natural_questions", split="train", cache_dir=self.cache_dir
-        )
         self.embedder = Embedder()
         self.translator = translator
+
+    @property
+    def nq(self) -> Dataset:
+        return load_dataset(
+            "natural_questions", split="train", cache_dir=self.cache_dir
+        )
 
     def build_mkqa(self) -> pd.DataFrame:
         """Builds the MKQA dataset for the given language.
