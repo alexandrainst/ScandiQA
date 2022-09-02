@@ -20,8 +20,12 @@ class Embedder:
     """
 
     def __init__(self, model_id: str = "all-mpnet-base-v2"):
+        self.model_id = model_id
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.sbert = SentenceTransformer(model_id, device=self.device)
+
+    @property
+    def sbert(self) -> SentenceTransformer:
+        return SentenceTransformer(self.model_id, device=self.device)
 
     def embed(self, text: str) -> np.ndarray:
         """Embed a text.
