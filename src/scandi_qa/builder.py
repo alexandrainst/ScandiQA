@@ -235,7 +235,10 @@ class QADatasetBuilder:
         _, val_test_ids = train_test_split(
             common_example_ids,
             test_size=1000,
-            stratify=dfs[self.languages[0]].loc[common_example_ids].has_answer,
+            stratify=dfs[self.languages[0]]
+            .set_index("example_id")
+            .loc[common_example_ids]
+            .has_answer,
         )
 
         # Extract the validation and test sets, again stratified on whether an answer
@@ -243,7 +246,10 @@ class QADatasetBuilder:
         val_ids, test_ids = train_test_split(
             val_test_ids,
             test_size=500,
-            stratify=dfs[self.languages[0]].loc[val_test_ids].has_answer,
+            stratify=dfs[self.languages[0]]
+            .set_index("example_id")
+            .loc[val_test_ids]
+            .has_answer,
         )
 
         # Extract the training IDs as the remaining IDs
@@ -253,7 +259,6 @@ class QADatasetBuilder:
             .difference(test_ids)
             for language, df in dfs.items()
         }
-        breakpoint()
 
         # Split the datasets into train, validation and test sets and return them
         return {
