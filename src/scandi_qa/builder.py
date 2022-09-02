@@ -1,9 +1,12 @@
 """Loading and processing of data."""
 
+import itertools as it
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
+import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from tqdm.auto import tqdm
 
 from .answer_extraction import extract_answer
@@ -16,8 +19,9 @@ class QADatasetBuilder:
     """Class that builds a QA dataset from the MKQA and NQ datasets.
 
     Args:
-        language (str, optional):
-            The two-character language code of the dataset. Defaults to "da".
+        languages (list of str, optional):
+            The two-character language codes of the dataset. Defaults to
+            ["da", "sv", "no"].
         val_size (int, optional):
             The size of the validation set. Defaults to 500.
         test_size (int, optional):
@@ -27,14 +31,14 @@ class QADatasetBuilder:
             '~/.cache/huggingface/datasets'.
 
     Attributes:
-        language (str):
-            The language of the dataset.
+        languages (list of str):
+            The languages of the dataset.
         cache_dir (str):
             The directory to cache the dataset.
-        merger (Merger):
-            The merger used to merge MKQA and NQ.
-        translator (DeepLTranslator):
-            The translator used to translate the questions.
+        mergers (Dict[str, Merger]):
+            The mergers used to merge MKQA and NQ.
+        translators (Dict[str, Translator]):
+            The translators used to translate the questions.
 
     Raises:
         ValueError:
@@ -43,50 +47,91 @@ class QADatasetBuilder:
 
     def __init__(
         self,
-        language: str = "da",
+        languages: List[str] = ["da", "sv", "no"],
         val_size: int = 500,
         test_size: int = 500,
         cache_dir: str = "~/.cache/huggingface/datasets",
     ):
-        # If the language is not supported, raise an error
-        if language not in MKQA_LANGUAGES:
-            raise ValueError(
-                f"Language '{language}' not supported. We only support "
-                f"{', '.join(MKQA_LANGUAGES)}"
-            )
+        # If one of the languages is not supported, raise an error
+        for language in languages:
+            if language not in MKQA_LANGUAGES:
+                raise ValueError(
+                    f"Language '{language}' not supported. We only support "
+                    f"{', '.join(MKQA_LANGUAGES)}"
+                )
 
-        self.language = language
+        self.languages = languages
         self.val_size = val_size
         self.test_size = test_size
         self.cache_dir = cache_dir
 
         # Set up translator, depending on the language
-        self.translator: Translator
-        if language in DEEPL_LANGUAGES:
-            self.translator = DeepLTranslator()
-        else:
-            self.translator = GoogleTranslator()
+        deepl_translator = DeepLTranslator()
+        google_translator = GoogleTranslator()
+        self.translators: Dict[str, Translator] = dict()
+        for language in self.languages:
+            if language in DEEPL_LANGUAGES:
+                self.translators[language] = deepl_translator
+            else:
+                self.translators[language] = google_translator
 
-        self.merger = Merger(
-            translator=self.translator,
-            language=self.language,
-            cache_dir=self.cache_dir,
-        )
+        # Set up the mergers
+        self.mergers = {
+            language: Merger(
+                translator=self.translators[language],
+                language=language,
+                cache_dir=self.cache_dir,
+            )
+            for language in self.languages
+        }
 
-    def build(self) -> Dict[str, pd.DataFrame]:
+    def build(self) -> Dict[str, Dict[str, pd.DataFrame]]:
         """Builds the dataset and pushes it to the Hugging Face Hub.
 
         Returns:
-            dict of Pandas DataFrames:
-                The resulting dataset for the given language, with keys "train",
-                "val" and "test".
+            Dict[str, Dict[str, pd.DataFrame]]:
+                The resulting datasets for each language and each split. The outer
+                dictionary has the languages as keys and the inner dictionary has
+                the splits ("train", "val" and "test") as keys.
+        """
+        # Merge the dataset for each language
+        merged_dfs = {
+            language: self.build_single(language=language)
+            for language in self.languages
+        }
+
+        # Split into train, validation and test sets for each language. This results in
+        # a dictionary with a key for each language, the values of which are dicts with
+        # "train", "val" and "test" keys.
+        dataset_dicts = self.split_dataset(merged_dfs)
+
+        # Store all the splits as separate JSONL files
+        data_dir = Path("src") / "dataset_repo" / "data"
+        for language, dataset_dict in dataset_dicts.items():
+            for split, dataset in dataset_dict.items():
+                path = data_dir / language / f"{split}.jsonl"
+                dataset.to_json(path, orient="records", lines=True)
+
+        # Return the dataset
+        return dataset_dicts
+
+    def build_single(self, language: str) -> pd.DataFrame:
+        """Builds the dataset for a single language.
+
+        Args:
+            language (str):
+                The language to build the dataset for.
+
+        Returns:
+            Pandas DataFrame:
+                The resulting dataset for the given language.
         """
         # Set up the path to the merged dataset
-        merged_path = Path("data") / "processed" / f"merged_{self.language}.parquet"
+        merged_path = Path("data") / "processed" / f"merged_{language}.parquet"
 
         # Merge the MKQA and NQ datasets if they haven't been merged yet
         if not merged_path.exists():
-            df = self.merger.merge()
+            df = self.mergers[language].merge()
             df.to_parquet(merged_path)
 
         # Otherwise load the merged dataset
@@ -94,26 +139,19 @@ class QADatasetBuilder:
             df = pd.read_parquet(merged_path)
 
         # Translate the English contexts
-        df = self.translate_contexts(df)
-
-        # Split into train, validation and test sets
-        dataset_dict = self.split_dataset(df)
-
-        # Store as JSONL files
-        data_dir = Path("src") / "dataset_repo" / "data"
-        for split, dataset in dataset_dict.items():
-            path = data_dir / self.language / f"{split}.jsonl"
-            dataset.to_json(path, orient="records", lines=True)
+        df = self.translate_contexts(df, language=language)
 
         # Return the dataset
-        return dataset_dict
+        return df
 
-    def translate_contexts(self, df: pd.DataFrame) -> pd.DataFrame:
+    def translate_contexts(self, df: pd.DataFrame, language: str) -> pd.DataFrame:
         """Translates the English contexts of the MKQA dataset.
 
         Args:
             df (pd.DataFrame):
                 The merged dataset from MKQA and NQ.
+            language (str):
+                The language to translate the contexts to.
 
         Returns:
             pd.DataFrame:
@@ -121,7 +159,10 @@ class QADatasetBuilder:
         """
         # Translate all the English contexts
         with tqdm(df.iterrows(), total=len(df), desc="Translating contexts") as pbar:
-            records = [self._translate_context(example) for _, example in pbar]
+            records = [
+                self._translate_context(example, language=language)
+                for _, example in pbar
+            ]
 
         # Convert to a Pandas DataFrame and replace MKQA dataset
         translated_df = pd.DataFrame.from_records(records)
@@ -136,7 +177,9 @@ class QADatasetBuilder:
         # Return the translated dataset
         return translated_df
 
-    def split_dataset(self, df: pd.DataFrame) -> Dict[str, pd.DataFrame]:
+    def split_dataset(
+        self, dfs: Dict[str, pd.DataFrame]
+    ) -> Dict[str, Dict[str, pd.DataFrame]]:
         """Splits the dataset into train, validation and test sets.
 
         The dataset is split based on a stratification on whether an answer exists, to
@@ -144,72 +187,92 @@ class QADatasetBuilder:
         answer.
 
         Args:
-            df (pd.DataFrame):
-                The merged dataset from MKQA and NQ.
+            dfs (Dict[str, pd.DataFrame]):
+                The merged datasets from MKQA and NQ, with keys for each language.
 
         Returns:
-            dict of Pandas Dataframes:
-                The train, validation and test sets.
+            Dict[str, Dict[str, pd.DataFrame]]:
+                The resulting datasets for each language and each split. The outer
+                dictionary has the languages as keys and the inner dictionary has
+                the splits ("train", "val" and "test") as keys.
         """
-        # Split the dataframe into one with and one without answers
-        df_with_answer = df.query("answer != ''")
-        df_without_answer = df.query("answer == ''")
+        # Add feature to the dataframes on whether an answer exists
+        for language, df in dfs.items():
+            dfs[language]["has_answer"] = df.answer.str.len() > 0
 
-        # Get the proportion of questions with an answer
-        proportion_with_answer = len(df_with_answer) / len(df)
-        proportion_without_answer = 1 - proportion_with_answer
-
-        # Compute the number of val/test samples for answers/no answers
-        val_test_size_with_answer = int(
-            (self.val_size + self.test_size) * proportion_with_answer
-        )
-        val_test_size_without_answer = int(
-            (self.val_size + self.test_size) * proportion_without_answer
+        # Get the example IDs that all languages have in common
+        common_example_ids = np.asarray(
+            list(
+                set.intersection(*[set(df.example_id.tolist()) for df in dfs.values()])
+            )
         )
 
-        # Split the dataframe with answers into a training split and a val/test split
-        val_test_with_answer = df_with_answer.sample(n=val_test_size_with_answer)
-        train_with_answer = df_with_answer.drop(val_test_with_answer.index)
-
-        # Split the dataframe without answers into a training split and a val/test split
-        val_test_without_answer = df_without_answer.sample(
-            n=val_test_size_without_answer
+        # Get matrix of shape (num_languages, num_common_example_ids) indicating
+        # whether an example has an answer in each language
+        has_answer_matrix = np.stack(
+            [
+                df.set_index("example_id").loc[common_example_ids, "has_answer"]
+                for df in dfs.values()
+            ],
+            axis=0,
         )
-        train_without_answer = df_without_answer.drop(val_test_without_answer.index)
 
-        # Get the proportion of validation samples in the val/test split
-        proportion_val = self.val_size / (self.val_size + self.test_size)
+        # Compute an array of shape (num_common_example_ids,) indicating, for each
+        # sample, whether all languages agree on whether it has an answer
+        has_same_answer = np.array(
+            [
+                np.unique(has_answer_matrix[:, col_idx]).size == 1
+                for col_idx in range(has_answer_matrix.shape[1])
+            ]
+        )
 
-        # Split the val_test split with answers into a validation and a test split
-        val_with_answer = val_test_with_answer.sample(frac=proportion_val)
-        test_with_answer = val_test_with_answer.drop(val_with_answer.index)
+        # Get the common example IDs where all languages agree on whether an answer
+        # exists
+        common_example_ids = common_example_ids[has_same_answer]
 
-        # Split the val_test split without answers into a validation and a test split
-        val_without_answer = val_test_without_answer.sample(frac=proportion_val)
-        test_without_answer = val_test_without_answer.drop(val_without_answer.index)
+        # Extract a combined validation and test set, stratified on whether an answer
+        # exists
+        _, val_test_ids = train_test_split(
+            common_example_ids,
+            test_size=1000,
+            stratify=dfs[self.languages[0]].has_answer,
+        )
 
-        # Concatenate the training, validation and test splits
-        train = pd.concat([train_with_answer, train_without_answer])
-        val = pd.concat([val_with_answer, val_without_answer])
-        test = pd.concat([test_with_answer, test_without_answer])
+        # Extract the validation and test sets, again stratified on whether an answer
+        # exists
+        val_ids, test_ids = train_test_split(
+            val_test_ids,
+            test_size=500,
+            stratify=dfs[self.languages[0]].has_answer.loc[val_test_ids],
+        )
 
-        # Reset the indices of the splits
-        train.reset_index(drop=True, inplace=True)
-        val.reset_index(drop=True, inplace=True)
-        test.reset_index(drop=True, inplace=True)
+        # Extract the training IDs as the remaining IDs
+        train_ids = {
+            language: set(df.example_id.tolist())
+            .difference(val_ids)
+            .difference(test_ids)
+            for language, df in dfs.items()
+        }
+        breakpoint()
 
-        # Shuffle the training set
-        train = train.sample(frac=1).reset_index(drop=True)
+        # Split the datasets into train, validation and test sets and return them
+        return {
+            language: dict(
+                train=df[df.example_id.isin(train_ids[language])],
+                val=df[df.example_id.isin(val_ids)],
+                test=df[df.example_id.isin(test_ids)],
+            )
+            for language, df in dfs.items()
+        }
 
-        # Return a dictionary with the splits
-        return dict(train=train, val=val, test=test)
-
-    def _translate_context(self, example: pd.Series) -> dict:
+    def _translate_context(self, example: pd.Series, language: str) -> dict:
         """Translate the English context to the target language.
 
         Args:
             example (pd.Series):
                 The MKQA example with an English context that needs to be translated.
+            language (str):
+                The language to translate the context to.
 
         Returns:
             dict:
@@ -219,8 +282,8 @@ class QADatasetBuilder:
                 translated context.
         """
         # Translate the English context
-        example["context"] = self.translator(
-            example.context_en, target_lang=self.language
+        example["context"] = self.translators[language](
+            example.context_en, target_lang=language
         )
 
         # Append the English title to both the English context and the translated
@@ -242,8 +305,8 @@ class QADatasetBuilder:
                 answer=example.answer,
                 answer_en=example.answer_en,
                 context=example.context,
-                language=self.language,
-                translator=self.translator,
+                language=language,
+                translator=self.translators[language],
             )
 
             # If no answer could be extracted then set the answer and answer_start to
@@ -278,7 +341,7 @@ class QADatasetBuilder:
                         answer_en=None,
                         context=example.context_en,
                         language="en",
-                        translator=self.translator,
+                        translator=self.translators[language],
                     )
                     if answer_en_dict is not None:
                         example["answer_en"] = answer_en_dict["answer"]

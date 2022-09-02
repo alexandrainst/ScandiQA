@@ -14,9 +14,8 @@ def main(languages: List[str] = ["da", "sv", "no"]):
             The languages to build the dataset for. Defaults to ["da", "sv", "no"].
     """
     # Build the dataset
-    for language in languages:
-        builder = QADatasetBuilder(language=language)
-        builder.build()
+    builder = QADatasetBuilder(languages=languages)
+    builder.build()
 
 
 if __name__ == "__main__":
