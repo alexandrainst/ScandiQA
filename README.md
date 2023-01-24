@@ -4,7 +4,7 @@ Scandinavian question-answering models and datasets.
 
 Developers:
 
-- Dan Saattrup Nielsen (dan.nielsen@alexandra.dk)
+- REDACTED (REDACTED)
 
 ______________________________________________________________________
 [![Documentation](https://img.shields.io/badge/docs-passing-green)](https://alexandrainst.github.io/scandi_qa/index.html)
