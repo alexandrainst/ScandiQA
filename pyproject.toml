@@ -3,7 +3,7 @@ name = "scandi_qa"
 version = "0.0.1"
 description = "Scandinavian question-answering models and datasets."
 authors = [
-    "Dan Saattrup Nielsen <dan.nielsen@alexandra.dk>",
+    "REDACTED <REDACTED>",
 ]
 readme = "README.md"
 license = "MIT"
